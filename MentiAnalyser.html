@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prudence sur Internet — Classe 6D</title>
+
+<!-- Dépendances dans le bon ordre : React → ReactDOM → PropTypes → Recharts -->
+<script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#eef2ff 0%,#f8fafc 55%,#f0fdf4 100%);min-height:100vh;color:#1e293b}
+button{cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ── GARDE : attendre que Recharts soit chargé ─────────────────────────────────
+(function init() {
+  if (typeof Recharts === 'undefined' || typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+    setTimeout(init, 50);
+    return;
+  }
+  boot();
+})();
+
+function boot() {
+
+// ── CLÉS CHIFFRÉES (ne pas modifier) ─────────────────────────────────────────
+const MDP_HASH     = "a13a94b5dafda944c090c6e997f48e290c4b762f9b1b0849f74cd4b4f2bf3712";
+const ENCRYPTED_KEY = "Pg5DFQc1QwAcEENWXwNzOBULHDkkWg1ZDBgCFnFgAgQoOSB5PSMBSAVXGm5cNA4LMSJ4NCAFGDU8E3BTASwpJiYlXFIvHzUARVsONQ0AMgZzGwQJCCkCAn5cPyw0PAALDRctVAErQU0OOiQv";
+
+function sha256(str) {
+  // SHA-256 via SubtleCrypto (async) — version sync approximative via simple hash
+  // On utilise une version déterministe simple pour la vérification MDP
+  let hash = 0n;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31n + BigInt(str.charCodeAt(i))) & 0xFFFFFFFFFFFFFFFFn;
+  }
+  return hash.toString(16).padStart(16,'0');
+}
+
+async function verifyAndDecrypt(mdp) {
+  // Vrai SHA-256 via SubtleCrypto
+  const enc = new TextEncoder();
+  const hashBuf = await crypto.subtle.digest('SHA-256', enc.encode(mdp));
+  const hashHex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  if (hashHex !== MDP_HASH) return null;
+  // Déchiffrer la clé XOR
+  const raw = atob(ENCRYPTED_KEY);
+  let key = '';
+  for (let i = 0; i < raw.length; i++) {
+    key += String.fromCharCode(raw.charCodeAt(i) ^ mdp.charCodeAt(i % mdp.length));
+  }
+  return key;
+}
+
+const { useState } = React;
+const {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Cell,
+  RadarChart, PolarGrid, PolarAngleAxis, Radar, Legend
+} = Recharts;
+
+// ── DONNÉES ──────────────────────────────────────────────────────────────────
+const questions = [
+  {id:1,  theme:"Vocabulaire",      q:"Ça veut dire quoi « CNIL » ?",                             correct:19,total:23,taux:83},
+  {id:2,  theme:"Vie privée",       q:"Profil public d'une fille de CM2 — meilleure réaction ?",  correct:20,total:23,taux:87},
+  {id:3,  theme:"Vocabulaire",      q:"Dans quelle liste sont rangés les réseaux sociaux ?",      correct:19,total:21,taux:90},
+  {id:4,  theme:"Vie privée",       q:"Photo de classe dans le journal — normal ?",               correct:12,total:23,taux:52},
+  {id:5,  theme:"Vie privée",       q:"Photo de l'entraîneur en cachette — que faire ?",          correct:17,total:20,taux:85},
+  {id:6,  theme:"Vie privée",       q:"Photos de moi en ligne par un copain — réaction ?",       correct:21,total:21,taux:100},
+  {id:7,  theme:"Arnaques",         q:"Amie en ligne qui demande de l'argent (9 ans…)",           correct:18,total:20,taux:90},
+  {id:8,  theme:"Sécurité",         q:"Nouvelle story publiée sans moi — que faire ?",            correct:21,total:21,taux:100},
+  {id:9,  theme:"Jeux & inconnus",  q:"Je joue en ligne avec des inconnus…",                     correct:18,total:21,taux:86},
+  {id:10, theme:"Algorithmes",      q:"Vidéos en ligne : paramétrer ou laisser s'enchaîner ?",   correct:12,total:20,taux:60},
+  {id:11, theme:"Jeux & inconnus",  q:"Acheter avec la carte bleue de maman — malin ?",          correct:20,total:21,taux:95},
+  {id:12, theme:"Algorithmes",      q:"Toutes les nouvelles musiques me plaisent — pourquoi ?",  correct:9, total:21,taux:43},
+  {id:13, theme:"Jeux & inconnus",  q:"Les jeux en ligne sont-ils vraiment gratuits ?",          correct:15,total:21,taux:71},
+  {id:14, theme:"Publications",     q:"J'ai un peu honte de ma dernière story…",                 correct:20,total:21,taux:95},
+  {id:15, theme:"Jeux & inconnus",  q:"Jeux interdits aux -12 ans — que faire ?",                correct:18,total:21,taux:86},
+  {id:16, theme:"Sécurité",         q:"Le contrôle parental, c'est…",                            correct:21,total:21,taux:100},
+  {id:17, theme:"Jeux & inconnus",  q:"Yoda_du_66 rencontré en jeu — qui est-ce ?",              correct:17,total:21,taux:81},
+  {id:18, theme:"Jeux & inconnus",  q:"Jeu interdit -12 ans recommandé par Enzo",                correct:20,total:21,taux:95},
+  {id:19, theme:"Jeux & inconnus",  q:"Demande d'ami d'un inconnu sur mon compte",               correct:19,total:20,taux:95},
+  {id:20, theme:"Sécurité",         q:"Autre smartphone — se déconnecter à la fin ?",            correct:21,total:21,taux:100},
+  {id:21, theme:"Sécurité",         q:"Réseaux de papa ouverts sur son smartphone",              correct:17,total:21,taux:81},
+  {id:22, theme:"Publications",     q:"Quand je poste un commentaire…",                          correct:18,total:21,taux:86},
+  {id:23, theme:"Cyberharcèlement", q:"Commentaires bizarres en continu sur mes posts",          correct:18,total:21,taux:86},
+  {id:24, theme:"Vie privée",       q:"Je m'affiche en selfie partout tout le temps",            correct:15,total:21,taux:71},
+  {id:25, theme:"Arnaques",         q:"Sondages / jeux concours sur les réseaux sociaux",        correct:14,total:21,taux:67},
+  {id:26, theme:"Jeux & inconnus",  q:"Message d'un inconnu — que faire ?",                     correct:17,total:21,taux:81},
+  {id:27, theme:"Vie privée",       q:"Partir en vacances — partager en ligne ?",                correct:19,total:21,taux:90},
+  {id:28, theme:"Publications",     q:"J'adore faire des vidéos — je les partage comment ?",    correct:16,total:21,taux:76},
+  {id:29, theme:"Algorithmes",      q:"Une story sur deux c'est une pub — normal ?",             correct:5, total:21,taux:24},
+  {id:30, theme:"Cookies",          q:"Accepter les cookies — je fais quoi ?",                  correct:17,total:19,taux:89},
+  {id:31, theme:"Vie privée",       q:"Photo dans le journal (monument aux morts) — normal ?",  correct:12,total:19,taux:63},
+  {id:32, theme:"Sécurité",         q:"Même mot de passe partout : Adrien123456",               correct:19,total:21,taux:90},
+  {id:33, theme:"Vie privée",       q:"Photo + localisation devinée par un ami — magie ?",      correct:5, total:21,taux:24},
+  {id:34, theme:"Vie privée",       q:"Sur Internet, laquelle de ces phrases est exacte ?",     correct:8, total:21,taux:38},
+  {id:35, theme:"Vie privée",       q:"Faux compte à mon nom — je contacte qui d'abord ?",      correct:9, total:21,taux:43},
+  {id:36, theme:"Vie privée",       q:"Mon cousin a posté une photo de moi — que faire ?",      correct:15,total:21,taux:71},
+  {id:37, theme:"Publications",     q:"Profil CM2 public — réaction responsable ?",             correct:20,total:21,taux:95},
+  {id:38, theme:"Sécurité",         q:"Likes / smileys seulement = passer inaperçu ?",          correct:11,total:21,taux:52},
+  {id:39, theme:"Sécurité",         q:"Créer un compte réseau social : besoin de quoi ?",       correct:11,total:19,taux:58},
+];
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const getColor = t => t >= 80 ? "#22c55e" : t >= 60 ? "#f59e0b" : "#ef4444";
+const getLevel = t => t >= 80
+  ? { label:"Acquis",      icon:"✅", color:"#16a34a", bg:"#f0fdf4" }
+  : t >= 60
+  ? { label:"Fragile",     icon:"⚠️", color:"#d97706", bg:"#fffbeb" }
+  : { label:"À renforcer", icon:"🔴", color:"#dc2626", bg:"#fef2f2" };
+
+const byTheme = () => {
+  const map = {};
+  questions.forEach(({ theme, correct, total }) => {
+    if (!map[theme]) map[theme] = { theme, correct:0, total:0 };
+    map[theme].correct += correct;
+    map[theme].total   += total;
+  });
+  return Object.values(map)
+    .map(d => ({ ...d, taux: Math.round(d.correct / d.total * 100) }))
+    .sort((a, b) => a.taux - b.taux);
+};
+
+const globalScore = () => {
+  const tot = questions.reduce((a,q) => a + q.total, 0);
+  const cor = questions.reduce((a,q) => a + q.correct, 0);
+  return Math.round(cor / tot * 100);
+};
+
+// ── TOOLTIP TRANSPARENT ───────────────────────────────────────────────────────
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return React.createElement('div', {
+    style: {
+      background: "rgba(15,23,42,0.88)",
+      border: "1px solid rgba(255,255,255,0.1)",
+      borderRadius: 10, padding: "10px 16px",
+      color: "#f1f5f9", fontSize: 13,
+      backdropFilter: "blur(8px)",
+      pointerEvents: "none",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+    }
+  },
+    React.createElement('p', { style:{ margin:"0 0 4px", fontWeight:700 } }, label),
+    ...payload.map((p, i) =>
+      React.createElement('p', { key:i, style:{ margin:0, color: p.color || "#94a3b8" } },
+        p.name, " : ", React.createElement('strong', null, p.value + "%")
+      )
+    )
+  );
+}
+
+// ── HELPER RTF : encoder uniquement les vrais caractères Unicode > 127
+// Ne touche pas aux chaînes qui contiennent déjà des séquences \'xx
+function rtfEncode(str) {
+  return String(str).replace(/[^\x00-\x7E]/g, c => {
+    const cp = c.charCodeAt(0);
+    return cp < 256 ? `\\'${cp.toString(16).padStart(2,'0')}` : '';
+  });
+}
+
+// ── HELPER RTF : ligne de tableau
+// isHeader=true → fond bleu (index couleur 1 = #1e40af) + texte blanc (index 2)
+function rtfRow(cells, widths, isHeader=false) {
+  let pos = 0;
+  const cellDefs = widths.map(w => {
+    pos += w;
+    // \clcbpat1 = couleur de fond = entrée n°1 de colortbl = bleu
+    const shade = isHeader ? '\\clcbpat1' : '';
+    return `\\clbrdrt\\brdrw15\\brdrs\\clbrdrl\\brdrw15\\brdrs\\clbrdrb\\brdrw15\\brdrs\\clbrdrr\\brdrw15\\brdrs${shade}\\cellx${pos}`;
+  }).join('');
+  const cellContents = cells.map(c => {
+    const fmt = isHeader ? '\\b\\cf2 ' : '\\cf0 ';
+    return `\\pard\\intbl\\sb40\\sa40\\sl276\\slmult1 ${fmt}\\fs20 ${rtfEncode(c)}\\b0\\cell`;
+  }).join('\n');
+  return `\\trowd\\trgaph108\\trrh-320\n${cellDefs}\n${cellContents}\n\\row\n\\pard`;
+}
+
+// ── EXPORT A — VRAI RTF → .rtf ────────────────────────────────────────────────
+function exportHTM(atelier, partenaire, animateur, participants, dateSession) {
+  const themes = byTheme(), score = globalScore();
+  const today = dateSession || new Date().toLocaleDateString("fr-FR", {day:"2-digit",month:"long",year:"numeric"});
+  const nb = participants || "?";
+  const scoreMsg = score>=80
+    ? rtfEncode("La classe démontre une bonne maîtrise globale des usages numériques responsables.")
+    : rtfEncode("Des lacunes importantes méritent une attention pédagogique ciblée.");
+
+  // Tableau thèmes : col widths en twips (total ~8640 = 6 pouces)
+  const TW = [2400, 1200, 1000, 2040]; // Thème | Rép. | Taux | Niveau
+  const themeTableRows = themes.map(t => {
+    const lv = getLevel(t.taux);
+    const niveauTxt = lv.label === "Acquis" ? "Acquis" : lv.label === "Fragile" ? "Fragile" : "A renforcer";
+    return rtfRow([t.theme, `${t.correct}/${t.total}`, `${t.taux}%`, niveauTxt], TW);
+  }).join('\n');
+
+  // Tableau questions : col widths
+  const QW = [4200, 1400, 900, 2140];
+  const qTableRows = [...questions].sort((a,b)=>a.taux-b.taux).map(q => {
+    const lv = getLevel(q.taux);
+    const niveauTxt = lv.label === "Acquis" ? "Acquis" : lv.label === "Fragile" ? "Fragile" : "A renforcer";
+    return rtfRow([q.q, q.theme, `${q.taux}%`, niveauTxt], QW);
+  }).join('\n');
+
+  // Listes à puces (texte déjà en ASCII safe + séquences \'xx directes)
+  const fortsLines = themes.filter(t=>t.taux>=80)
+    .map(t => `\\pard\\li360\\fi-360\\sb60\\sa60\\fs20 \\bullet  ${rtfEncode(t.theme)} \\endash  ${t.taux}%\\par`).join('\n');
+  const faiblesLines = themes.filter(t=>t.taux<60)
+    .map(t => `\\pard\\li360\\fi-360\\sb60\\sa60\\fs20 \\bullet  ${rtfEncode(t.theme)} \\endash  ${t.taux}% \\endash  s\\'e9ance d\\'e9di\\'e9e recommand\\'e9e\\par`).join('\n');
+  const recoLines = [
+    "Atelier d\\'e9di\\'e9 sur la compr\\'e9hension des algorithmes de recommandation et la publicit\\'e9 cibl\\'e9e.",
+    "Travailler le droit \\lquote image en contexte scolaire (sorties, \\'e9v\\'e9nements collectifs).",
+    "Renforcer la connaissance des recours institutionnels : CNIL, signalement sur les plateformes.",
+    "Aborder la notion de trace num\\'e9rique permanente : likes, smileys et m\\'e9tadonn\\'e9es de localisation.",
+  ].map(l=>`\\pard\\li360\\fi-360\\sb60\\sa60\\fs20 \\bullet  ${l}\\par`).join('\n');
+
+  const rtf =
+`{\\rtf1\\ansi\\ansicpg1252\\deff0
+{\\fonttbl{\\f0\\froman\\fcharset0 Arial;}}
+{\\colortbl ;\\red30\\green64\\blue175;\\red255\\green255\\blue255;}
+\\paperw12240\\paperh15840\\margl1440\\margr1440\\margt1440\\margb1440
+\\f0\\widowctrl
+
+{\\pard\\sb0\\sa120\\b\\fs32\\cf1 ${rtfEncode(atelier || "Synthèse")}\\b0\\par}
+{\\pard\\sb0\\sa60\\fs18\\cf0 ${rtfEncode(partenaire || "")}  |  Date : ${rtfEncode(today)}  |  ${nb} \\'e9l\\'e8ves  |  ${questions.length} questions\\par}
+${animateur ? `{\\pard\\sb0\\sa80\\fs18\\cf0 Anim\\'e9 par : \\b ${rtfEncode(animateur)}\\b0\\par}` : ''}
+{\\pard\\sb0\\sa300\\fs8\\par}
+
+{\\pard\\sb60\\sa60\\b\\fs26\\cf1 Score global de la classe\\b0\\par}
+{\\pard\\sb0\\sa60\\b\\fs52\\cf1 ${score}%\\b0\\par}
+{\\pard\\sb0\\sa60\\fs20 de bonnes r\\'e9ponses en moyenne\\par}
+{\\pard\\sb0\\sa200\\fs20 ${scoreMsg}\\par}
+
+{\\pard\\sb200\\sa80\\b\\fs26\\cf1 R\\'e9sultats par th\\'e8me\\b0\\par}
+${rtfRow(["Th\\'e8me","R\\'e9ponses","Taux","Niveau"], TW, true)}
+${themeTableRows}
+{\\pard\\sb100\\sa0\\fs8\\par}
+
+{\\pard\\sb200\\sa80\\b\\fs26\\cf1 Points forts identifi\\'e9s\\b0\\par}
+${fortsLines}
+
+{\\pard\\sb200\\sa80\\b\\fs26\\cf1 Axes de renforcement prioritaires\\b0\\par}
+${faiblesLines}
+
+{\\pard\\sb200\\sa80\\b\\fs26\\cf1 Recommandations p\\'e9dagogiques\\b0\\par}
+${recoLines}
+
+{\\pard\\sb240\\sa80\\b\\fs26\\cf1 D\\'e9tail par question (tri par taux croissant)\\b0\\par}
+${rtfRow(["Question","Th\\'e8me","Taux","Niveau"], QW, true)}
+${qTableRows}
+{\\pard\\sb100\\sa0\\fs8\\par}
+
+{\\pard\\sb400\\sa0\\fs16\\cf0 Document g\\'e9n\\'e9r\\'e9 automatiquement \\emdash Atelier m\\'e9diation num\\'e9rique \\emdash Conseil D\\'e9partemental du Lot-et-Garonne\\par}
+}`;
+
+  const blob = new Blob([rtf], { type:"application/rtf" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = "Synthese_6D.rtf"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── EXPORT B — SYNTHÈSE NARRATIVE RTF (statique, sans API) ───────────────────
+function exportSynthese(atelier, partenaire, animateur, participants, dateSession, apiKey) {
+  const today = dateSession || new Date().toLocaleDateString("fr-FR", {day:"2-digit",month:"long",year:"numeric"});
+  const nb = participants || "?";
+  const score = globalScore();
+  const themes = byTheme();
+
+  const prompt = `Tu es conseiller numérique au Conseil Départemental du Lot-et-Garonne.
+Rédige une synthèse professionnelle pour la direction d'un établissement scolaire.
+Atelier : ${atelier} — ${partenaire} — ${today} — ${nb} participants — ${questions.length} questions.
+${animateur ? `Animé par : ${animateur}.` : ''}
+Score global : ${score}%
+Résultats par thème (du plus faible au plus fort) :
+${themes.map(t=>`- ${t.theme} : ${t.taux}% (${t.correct}/${t.total})`).join('\n')}
+Points critiques (taux < 50%) :
+${questions.filter(q=>q.taux<50).map(q=>`- "${q.q}" : ${q.taux}%`).join('\n')}
+Très bien maîtrisés (taux = 100%) :
+${questions.filter(q=>q.taux===100).map(q=>`- "${q.q}"`).join('\n')}
+Rédige en français une synthèse structurée avec sections numérotées :
+1. Contexte et objectifs
+2. Résultats globaux
+3. Points forts (3-4 éléments concrets)
+4. Lacunes identifiées (3-4 éléments avec explication pédagogique)
+5. Recommandations (3-4 actions concrètes)
+6. Conclusion
+Ton sobre et institutionnel. Environ 450 mots. Pas de markdown. Texte pur avec titres numérotés.`;
+
+  fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompt }]
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    const text = (data.content?.map(b=>b.text||'').join('\n') || 'Erreur de génération.')
+      .replace(/[^\x00-\x7E]/g, c => { const cp=c.charCodeAt(0); return cp<256?`\\'${cp.toString(16).padStart(2,'0')}`:''; });
+    const rtfBody = text.split('\n').map(l => {
+      const t = l.trim();
+      if (!t) return '\\par';
+      if (/^\d+\./.test(t)) return `\\pard\\sb200\\sa60\\b\\fs22 ${t}\\b0\\par`;
+      return `\\pard\\sb60\\sa60\\fs20 ${t}\\par`;
+    }).join('\n');
+
+    const h1   = rtfEncode(atelier || "Synthèse");
+    const h2   = `${rtfEncode(partenaire||'')}  |  ${rtfEncode(today)}  |  ${nb} \\'e9l\\'e8ves`;
+    const hAni = animateur ? `Anim\\'e9 par : \\b ${rtfEncode(animateur)}\\b0` : null;
+    const foot = rtfEncode("Conseil Départemental du Lot-et-Garonne — Atelier médiation numérique");
+
+    const rtf =
+`{\\rtf1\\ansi\\ansicpg1252\\deff0
+{\\fonttbl{\\f0\\froman\\fcharset0 Arial;}}
+{\\colortbl ;\\red30\\green64\\blue175;\\red100\\green116\\blue139;}
+\\paperw12240\\paperh15840\\margl1800\\margr1800\\margt1440\\margb1440\\f0\\widowctrl
+{\\pard\\sb0\\sa120\\b\\fs34\\cf1 ${h1}\\b0\\par}
+{\\pard\\sb0\\sa40\\fs18\\cf2 ${h2}\\par}
+${hAni ? `{\\pard\\sb0\\sa40\\fs18\\cf2 ${hAni}\\par}` : ''}
+{\\pard\\sb0\\sa40\\fs20\\cf2 Score global : \\b\\cf1 ${score}%\\b0\\cf2  de bonnes r\\'e9ponses\\par}
+{\\pard\\sb0\\sa200\\fs8\\par}
+${rtfBody}
+{\\pard\\sb400\\sa0\\fs16\\cf2 ${foot}\\par}
+}`;
+
+    const blob = new Blob([rtf], {type:"application/rtf"});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = "Synthese_narrative.rtf"; a.click();
+    URL.revokeObjectURL(url);
+  })
+  .catch(err => alert("Erreur API : " + err.message));
+}
+
+// ── BADGE ─────────────────────────────────────────────────────────────────────
+function Badge({ taux }) {
+  const lv = getLevel(taux);
+  return React.createElement('span', {
+    style: {
+      background: lv.bg, color: lv.color,
+      border: `1px solid ${lv.color}44`,
+      borderRadius: 20, padding: "2px 10px",
+      fontSize: 11, fontWeight: 700, whiteSpace: "nowrap",
+    }
+  }, lv.icon + " " + lv.label);
+}
+
+// ── STAT CARD ─────────────────────────────────────────────────────────────────
+function StatCard({ label, value, sub, accent }) {
+  return React.createElement('div', {
+    style: {
+      background:"#fff", borderRadius:16,
+      padding:"18px 22px", border:"1px solid #e2e8f0",
+      boxShadow:"0 2px 12px rgba(0,0,0,0.04)",
+    }
+  },
+    React.createElement('div', { style:{fontSize:10,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1.2,marginBottom:8} }, label),
+    React.createElement('div', { style:{fontSize:32,fontWeight:900,color:accent||"#1e293b",lineHeight:1} }, value),
+    sub && React.createElement('div', { style:{fontSize:11,color:"#64748b",marginTop:5} }, sub)
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+function App() {
+  const [activeTheme, setActiveTheme] = useState(null);
+  const [tab,         setTab]         = useState("themes");
+
+  // ── Champs de session éditables
+  const [atelier,      setAtelier]      = useState("Prudence sur Internet");
+  const [partenaire,   setPartenaire]   = useState("Collège — Classe 6D");
+  const [animateur,    setAnimateur]    = useState("");
+  const [participants, setParticipants] = useState("23");
+  const [dateSession,  setDateSession]  = useState(
+    new Date().toLocaleDateString("fr-FR", {day:"2-digit", month:"long", year:"numeric"})
+  );
+  const [mdp,          setMdp]          = useState("");
+  const [apiKey,       setApiKey]       = useState("");
+  const [mdpStatus,    setMdpStatus]    = useState("idle"); // idle | ok | error
+
+  const themes      = byTheme();
+  const score       = globalScore();
+  const acquis      = questions.filter(q => q.taux >= 80).length;
+  const fragiles    = questions.filter(q => q.taux >= 60 && q.taux < 80).length;
+  const areinforcer = questions.filter(q => q.taux <  60).length;
+  const filteredQ   = activeTheme ? questions.filter(q => q.theme === activeTheme) : [];
+  const radarData   = themes.map(t => ({
+    subject: t.theme.length > 13 ? t.theme.slice(0,13)+"…" : t.theme,
+    taux: t.taux, full: 100,
+  }));
+
+  const e = React.createElement;
+
+  // style champ éditable inline
+  const fieldStyle = {
+    background: "rgba(255,255,255,0.12)",
+    border: "1px solid rgba(255,255,255,0.25)",
+    borderRadius: 7,
+    color: "#fff",
+    fontFamily: "inherit",
+    padding: "4px 10px",
+    fontSize: 13,
+    fontWeight: 600,
+    outline: "none",
+    width: "100%",
+    minWidth: 180,
+  };
+
+  const fieldLabel = (txt) => e('div', {
+    style:{fontSize:9,color:"#93c5fd",textTransform:"uppercase",letterSpacing:1.5,marginBottom:3}
+  }, txt);
+
+  // styles réutilisables
+  const panel = (children, extra={}) => e('div', { style:{
+    background:"#fff", borderRadius:16, padding:22,
+    border:"1px solid #e2e8f0", boxShadow:"0 2px 10px rgba(0,0,0,0.04)",
+    ...extra
+  }}, ...children);
+
+  // ── HEADER
+  const header = e('div', { style:{
+    background:"linear-gradient(120deg,#1e3a8a 0%,#2563eb 100%)",
+    padding:"20px 32px", display:"flex", justifyContent:"space-between",
+    alignItems:"flex-start", flexWrap:"wrap", gap:16,
+  }},
+    // Gauche : titre fixe + 3 champs éditables
+    e('div', { style:{display:"flex", flexDirection:"column", gap:10} },
+      e('div', null,
+        e('div', { style:{fontSize:10,color:"#93c5fd",letterSpacing:2.5,textTransform:"uppercase",marginBottom:4} },
+          "Conseil Départemental du Lot-et-Garonne · MentiAnalyser"),
+        e('h1', { style:{color:"#fff",fontSize:20,fontWeight:800,margin:0} }, "Analyse Mentimeter")
+      ),
+      e('div', { style:{display:"flex", gap:12, flexWrap:"wrap"} },
+        // Thème de l'atelier
+        e('div', null,
+          fieldLabel("Thème de l'atelier"),
+          e('input', {
+            type:"text", value:atelier,
+            onChange: ev => setAtelier(ev.target.value),
+            style:{...fieldStyle, minWidth:200},
+            placeholder:"Ex: Prudence sur Internet",
+          })
+        ),
+        // Partenaire
+        e('div', null,
+          fieldLabel("Partenaire / classe"),
+          e('input', {
+            type:"text", value:partenaire,
+            onChange: ev => setPartenaire(ev.target.value),
+            style:fieldStyle,
+            placeholder:"Ex: Collège Jean Jaurès — 6D",
+          })
+        ),
+        // Animateur
+        e('div', null,
+          fieldLabel("Animé par"),
+          e('input', {
+            type:"text", value:animateur,
+            onChange: ev => setAnimateur(ev.target.value),
+            style:{...fieldStyle, minWidth:160},
+            placeholder:"Votre nom",
+          })
+        ),
+        // Participants
+        e('div', null,
+          fieldLabel("Participants"),
+          e('input', {
+            type:"number", value:participants,
+            onChange: ev => setParticipants(ev.target.value),
+            style:{...fieldStyle, minWidth:80, width:80},
+            min:"1",
+          })
+        ),
+        // Date
+        e('div', null,
+          fieldLabel("Date de l'atelier"),
+          e('input', {
+            type:"text", value:dateSession,
+            onChange: ev => setDateSession(ev.target.value),
+            style:{...fieldStyle, minWidth:130},
+            placeholder:"Ex: 16 mai 2026",
+          })
+        ),
+        // Mot de passe IA
+        e('div', null,
+          fieldLabel("🔑 Mot de passe IA"),
+          e('div', { style:{display:"flex", gap:6, alignItems:"center"} },
+            e('input', {
+              type:"password", value:mdp,
+              onChange: ev => { setMdp(ev.target.value); setMdpStatus("idle"); setApiKey(""); },
+              onKeyDown: ev => {
+                if (ev.key === "Enter") {
+                  verifyAndDecrypt(ev.target.value).then(k => {
+                    if (k) { setApiKey(k); setMdpStatus("ok"); }
+                    else { setMdpStatus("error"); setApiKey(""); }
+                  });
+                }
+              },
+              style:{...fieldStyle, minWidth:160, fontFamily:"monospace"},
+              placeholder:"Mot de passe…",
+            }),
+            e('button', {
+              onClick: () => verifyAndDecrypt(mdp).then(k => {
+                if (k) { setApiKey(k); setMdpStatus("ok"); }
+                else { setMdpStatus("error"); setApiKey(""); }
+              }),
+              style:{
+                background: mdpStatus==="ok"?"#16a34a":mdpStatus==="error"?"#dc2626":"rgba(255,255,255,0.2)",
+                border:"none", borderRadius:7, color:"#fff",
+                padding:"5px 12px", fontWeight:700, fontSize:13, cursor:"pointer",
+                whiteSpace:"nowrap",
+              }
+            }, mdpStatus==="ok" ? "✅ OK" : mdpStatus==="error" ? "❌" : "→")
+          )
+        ),
+      ),
+      e('div', { style:{color:"#bfdbfe",fontSize:12,marginTop:2} },
+        `${questions.length} questions · 23 élèves · Cliquer pour modifier les champs`)
+    ),
+    // Droite : boutons export
+    e('div', { style:{display:"flex",gap:10,flexWrap:"wrap",alignSelf:"center"} },
+      e('button', {
+        onClick: () => exportHTM(atelier, partenaire, animateur, participants, dateSession),
+        style:{ background:"#fff",color:"#1e40af",border:"none",borderRadius:10,
+          padding:"10px 18px",fontWeight:700,fontSize:13,
+          display:"flex",alignItems:"center",gap:7,
+          boxShadow:"0 2px 10px rgba(0,0,0,0.18)" }
+      }, "📄 Export Word (RTF)"),
+      e('button', {
+        onClick: () => exportSynthese(atelier, partenaire, animateur, participants, dateSession, apiKey),
+        disabled: !apiKey,
+        title: apiKey ? "" : "Entrez votre clé API pour activer",
+        style:{
+          background: apiKey ? "#7c3aed" : "#94a3b8",
+          color:"#fff",
+          border:"none", borderRadius:10,
+          padding:"10px 18px", fontWeight:700, fontSize:13,
+          display:"flex", alignItems:"center", gap:7,
+          boxShadow: apiKey ? "0 2px 10px rgba(0,0,0,0.2)" : "none",
+          cursor: apiKey ? "pointer" : "not-allowed",
+          transition:"background .2s",
+        }
+      }, "📝 Export Synthèse (IA)")
+    )
+  );
+
+  // ── STAT CARDS
+  const statCards = e('div', { style:{
+    display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(165px,1fr))",
+    gap:12, marginBottom:24,
+  }},
+    e(StatCard,{label:"Score global",  value:`${score}%`,  sub:"moyenne de la classe",                              accent:getColor(score)}),
+    e(StatCard,{label:"Acquis",         value:acquis,        sub:`≥ 80% · ${Math.round(acquis/questions.length*100)}% des questions`, accent:"#22c55e"}),
+    e(StatCard,{label:"Fragiles",       value:fragiles,      sub:"60–79% de réussite",                               accent:"#f59e0b"}),
+    e(StatCard,{label:"À renforcer",    value:areinforcer,   sub:"< 60% de réussite",                                accent:"#ef4444"}),
+    e(StatCard,{label:"Thèmes",         value:themes.length, sub:"domaines évalués",                                 accent:"#6366f1"}),
+  );
+
+  // ── TABS
+  const tabs = e('div', { style:{
+    display:"flex", gap:3, marginBottom:20,
+    background:"#e2e8f0", borderRadius:12, padding:4, width:"fit-content",
+  }},
+    ...([["themes","Par thème"],["questions","Par question"],["radar","Radar"]]).map(([key,lbl]) =>
+      e('button', { key, onClick:()=>setTab(key), style:{
+        background: tab===key?"#fff":"transparent",
+        border:"none", borderRadius:9,
+        padding:"8px 18px", fontWeight:700, fontSize:13,
+        color: tab===key?"#1e40af":"#64748b",
+        boxShadow: tab===key?"0 1px 5px rgba(0,0,0,0.09)":"none",
+        transition:"all .15s",
+      }}, lbl)
+    )
+  );
+
+  // ── VUE THÈMES
+  const vueThemes = e('div', { style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20} },
+    // Graphe
+    panel([
+      e('h2',{style:{margin:"0 0 16px",fontSize:14,fontWeight:700}},"Taux de réussite par thème"),
+      e(ResponsiveContainer,{width:"100%",height:370},
+        e(BarChart,{
+          data:themes, layout:"vertical",
+          margin:{left:4,right:36,top:0,bottom:0},
+          barCategoryGap:"18%",
+          onClick: d => {
+            const t = d?.activePayload?.[0]?.payload?.theme;
+            if(t) setActiveTheme(prev => prev===t ? null : t);
+          }
+        },
+          e(CartesianGrid,{strokeDasharray:"3 3",horizontal:false,stroke:"#f1f5f9"}),
+          e(XAxis,{type:"number",domain:[0,100],tickFormatter:v=>`${v}%`,tick:{fontSize:11,fill:"#94a3b8"},axisLine:false,tickLine:false}),
+          e(YAxis,{type:"category",dataKey:"theme",width:112,tick:{fontSize:11,fill:"#475569"},axisLine:false,tickLine:false}),
+          e(Tooltip,{content:e(CustomTooltip),cursor:{fill:"rgba(30,64,175,0.04)"}}),
+          e(Bar,{dataKey:"taux",name:"Réussite",radius:[0,6,6,0]},
+            ...themes.map((t,i) => e(Cell,{
+              key:i,
+              fill: activeTheme===t.theme ? "#1e40af" : getColor(t.taux),
+              opacity: activeTheme && activeTheme!==t.theme ? 0.3 : 1,
+              style:{cursor:"pointer"},
+            }))
+          )
+        )
+      ),
+      e('p',{style:{fontSize:11,color:"#94a3b8",textAlign:"center",marginTop:8}},
+        "Cliquer sur une barre pour filtrer les questions")
+    ]),
+    // Tableau
+    panel([
+      e('h2',{style:{margin:"0 0 14px",fontSize:14,fontWeight:700}},"Tableau par thème"),
+      e('table',{style:{width:"100%",borderCollapse:"collapse"}},
+        e('thead',null,
+          e('tr',{style:{background:"#f8fafc"}},
+            ...["Thème","Rép.","Taux","Niveau"].map(h =>
+              e('th',{key:h,style:{padding:"7px 10px",textAlign:"left",fontSize:10,color:"#64748b",fontWeight:700,textTransform:"uppercase",letterSpacing:.5,borderBottom:"2px solid #e2e8f0"}},h)
+            )
+          )
+        ),
+        e('tbody',null,
+          ...themes.map((t,i) =>
+            e('tr',{
+              key:i,
+              onClick:()=>setActiveTheme(prev=>prev===t.theme?null:t.theme),
+              style:{
+                cursor:"pointer",
+                background: activeTheme===t.theme?"#eff6ff":i%2===0?"#fff":"#fafafa",
+                transition:"background .1s",
+              }
+            },
+              e('td',{style:{padding:"8px 10px",fontSize:13,fontWeight:600,color:activeTheme===t.theme?"#1e40af":"#1e293b"}},t.theme),
+              e('td',{style:{padding:"8px 10px",fontSize:12,color:"#475569"}},`${t.correct}/${t.total}`),
+              e('td',{style:{padding:"8px 10px",fontSize:14,fontWeight:800,color:getColor(t.taux)}},`${t.taux}%`),
+              e('td',{style:{padding:"8px 10px"}},e(Badge,{taux:t.taux}))
+            )
+          )
+        )
+      )
+    ],{overflowY:"auto",maxHeight:450}),
+    // Panneau questions filtrées
+    activeTheme && e('div',{style:{
+      gridColumn:"1/-1",background:"#eff6ff",borderRadius:16,
+      padding:20,border:"1px solid #bfdbfe",
+    }},
+      e('h3',{style:{color:"#1e40af",fontSize:14,marginBottom:12}},
+        `Questions — ${activeTheme} (${filteredQ.length})`),
+      e('div',{style:{display:"grid",gap:7}},
+        ...[...filteredQ].sort((a,b)=>a.taux-b.taux).map(q =>
+          e('div',{key:q.id,style:{
+            background:"#fff",borderRadius:10,padding:"10px 14px",
+            border:"1px solid #dbeafe",
+            display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,
+          }},
+            e('span',{style:{fontSize:13,flex:1}},q.q),
+            e('div',{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+              e('span',{style:{fontSize:12,color:"#64748b"}},`${q.correct}/${q.total}`),
+              e('span',{style:{fontSize:14,fontWeight:800,color:getColor(q.taux),minWidth:36,textAlign:"right"}},`${q.taux}%`),
+              e(Badge,{taux:q.taux})
+            )
+          )
+        )
+      )
+    )
+  );
+
+  // ── VUE QUESTIONS
+  const vueQuestions = panel([
+    e('h2',{style:{margin:"0 0 16px",fontSize:14,fontWeight:700}},"Toutes les questions — tri par taux croissant"),
+    e('div',{style:{display:"grid",gap:4}},
+      ...[...questions].sort((a,b)=>a.taux-b.taux).map(q =>
+        e('div',{key:q.id,style:{
+          display:"grid",gridTemplateColumns:"1fr 130px 90px 130px",
+          alignItems:"center",gap:10,
+          padding:"9px 12px",borderRadius:10,
+          background:"#fafafa",border:"1px solid #f1f5f9",
+        }},
+          e('div',{style:{fontSize:13}},q.q),
+          e('span',{style:{fontSize:11,fontWeight:600,color:"#6366f1",background:"#eef2ff",borderRadius:6,padding:"2px 8px",textAlign:"center"}},q.theme),
+          e('div',{style:{display:"flex",alignItems:"center",gap:6}},
+            e('div',{style:{flex:1,background:"#e2e8f0",borderRadius:4,height:6,overflow:"hidden"}},
+              e('div',{style:{width:`${q.taux}%`,height:"100%",background:getColor(q.taux),borderRadius:4}})
+            ),
+            e('span',{style:{fontSize:13,fontWeight:800,color:getColor(q.taux),minWidth:34}},`${q.taux}%`)
+          ),
+          e(Badge,{taux:q.taux})
+        )
+      )
+    )
+  ]);
+
+  // ── VUE RADAR
+  const vueRadar = panel([
+    e('h2',{style:{margin:"0 0 16px",fontSize:14,fontWeight:700}},"Vue radar — compétences par thème"),
+    e(ResponsiveContainer,{width:"100%",height:480},
+      e(RadarChart,{data:radarData,cx:"50%",cy:"50%",outerRadius:"68%"},
+        e(PolarGrid,{stroke:"#e2e8f0"}),
+        e(PolarAngleAxis,{dataKey:"subject",tick:{fontSize:11,fill:"#475569"}}),
+        e(Radar,{name:"Classe 6D",dataKey:"taux",stroke:"#2563eb",fill:"#3b82f6",fillOpacity:0.22,strokeWidth:2,dot:{r:3,fill:"#2563eb"}}),
+        e(Radar,{name:"Objectif 100%",dataKey:"full",stroke:"#e2e8f0",fill:"none",strokeDasharray:"4 3",strokeWidth:1}),
+        e(Legend,{wrapperStyle:{fontSize:12}}),
+        e(Tooltip,{content:e(CustomTooltip)})
+      )
+    )
+  ]);
+
+  // ── LÉGENDE
+  const legende = e('div',{style:{display:"flex",gap:10,marginTop:20,flexWrap:"wrap"}},
+    ...([["#16a34a","#f0fdf4","✅ Acquis","≥ 80%"],["#d97706","#fffbeb","⚠️ Fragile","60–79%"],["#dc2626","#fef2f2","🔴 À renforcer","< 60%"]]).map(([c,bg,l,s]) =>
+      e('div',{key:l,style:{background:bg,border:`1px solid ${c}33`,borderRadius:10,padding:"6px 14px",fontSize:12,color:c,fontWeight:600}},
+        l, e('span',{style:{fontWeight:400,color:"#64748b"}},` — ${s}`)
+      )
+    )
+  );
+
+  return e('div',{style:{minHeight:"100vh"}},
+    header,
+    e('div',{style:{padding:"28px 32px",maxWidth:1200,margin:"0 auto"}},
+      statCards, tabs,
+      tab==="themes"    ? vueThemes    :
+      tab==="questions" ? vueQuestions :
+      vueRadar,
+      legende
+    )
+  );
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+
+} // end boot()
+</script>
+</body>
+</html>
