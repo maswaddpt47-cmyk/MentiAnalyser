@@ -33,32 +33,28 @@ button{cursor:pointer;font-family:inherit}
 function boot() {
 
 // ── CLÉS CHIFFRÉES (ne pas modifier) ─────────────────────────────────────────
-const MDP_HASH     = "a13a94b5dafda944c090c6e997f48e290c4b762f9b1b0849f74cd4b4f2bf3712";
-const ENCRYPTED_KEY = "Pg5DFQc1QwAcEENWXwNzOBULHDkkWg1ZDBgCFnFgAgQoOSB5PSMBSAVXGm5cNA4LMSJ4NCAFGDU8E3BTASwpJiYlXFIvHzUARVsONQ0AMgZzGwQJCCkCAn5cPyw0PAALDRctVAErQU0OOiQv";
+const ENCRYPTED_KEY = "ILqa0/RSa9rSaS642Ber5Apkfes5fD3JsRLFR6FxdvaPn/tVTSjM7sipBrnmOnI09ERI44Z1y/Ni4CZwxzKkROcVZa5obOGmKqTIgujIsMQoCStglNXKBnOob5cdC7n0JK1DMtwfg+x/VPPQAofvYXMHvSziLGAu0s1bAAGw+ivMsUaJP5+ATzwfqegm7TQH3r3NP01fLGU=";
 
-function sha256(str) {
-  // SHA-256 via SubtleCrypto (async) — version sync approximative via simple hash
-  // On utilise une version déterministe simple pour la vérification MDP
-  let hash = 0n;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31n + BigInt(str.charCodeAt(i))) & 0xFFFFFFFFFFFFFFFFn;
+async function verifyAndDecrypt(password) {
+  try {
+    const raw    = Uint8Array.from(atob(ENCRYPTED_KEY), c => c.charCodeAt(0));
+    const salt   = raw.slice(0, 16);
+    const iv     = raw.slice(16, 28);
+    const cipher = raw.slice(28);
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+    );
+    const aesKey = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: 310000, hash: 'SHA-256' },
+      keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+    );
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, cipher);
+    const key = new TextDecoder().decode(decrypted);
+    if (!key.startsWith('sk-')) return null;
+    return key;
+  } catch(e) {
+    return null;
   }
-  return hash.toString(16).padStart(16,'0');
-}
-
-async function verifyAndDecrypt(mdp) {
-  // Vrai SHA-256 via SubtleCrypto
-  const enc = new TextEncoder();
-  const hashBuf = await crypto.subtle.digest('SHA-256', enc.encode(mdp));
-  const hashHex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  if (hashHex !== MDP_HASH) return null;
-  // Déchiffrer la clé XOR
-  const raw = atob(ENCRYPTED_KEY);
-  let key = '';
-  for (let i = 0; i < raw.length; i++) {
-    key += String.fromCharCode(raw.charCodeAt(i) ^ mdp.charCodeAt(i % mdp.length));
-  }
-  return key;
 }
 
 const { useState } = React;
@@ -312,8 +308,17 @@ Ton sobre et institutionnel. Environ 450 mots. Pas de markdown. Texte pur avec t
   })
   .then(r => r.json())
   .then(data => {
-    const text = (data.content?.map(b=>b.text||'').join('\n') || 'Erreur de génération.')
-      .replace(/[^\x00-\x7E]/g, c => { const cp=c.charCodeAt(0); return cp<256?`\\'${cp.toString(16).padStart(2,'0')}`:''; });
+    console.log('API response:', JSON.stringify(data));
+    if (data.error) {
+      alert('Erreur API : ' + data.error.type + ' — ' + data.error.message);
+      return;
+    }
+    const raw = (data.content?.map(b=>b.text||'').join('\n') || '').trim();
+    if (!raw) { alert('Réponse vide — voir console pour détails.'); return; }
+    const text = raw.replace(/[^\x00-\x7E]/g, c => {
+      const cp = c.charCodeAt(0);
+      return cp < 256 ? `\\'${cp.toString(16).padStart(2,'0')}` : '';
+    });
     const rtfBody = text.split('\n').map(l => {
       const t = l.trim();
       if (!t) return '\\par';
@@ -392,7 +397,8 @@ function App() {
   );
   const [mdp,          setMdp]          = useState("");
   const [apiKey,       setApiKey]       = useState("");
-  const [mdpStatus,    setMdpStatus]    = useState("idle"); // idle | ok | error
+  const [mdpStatus,    setMdpStatus]    = useState("idle");
+  const [showMdp,      setShowMdp]      = useState(false);
 
   const themes      = byTheme();
   const score       = globalScore();
@@ -487,14 +493,27 @@ function App() {
             min:"1",
           })
         ),
-        // Date
+        // Date — calendrier natif
         e('div', null,
           fieldLabel("Date de l'atelier"),
           e('input', {
-            type:"text", value:dateSession,
-            onChange: ev => setDateSession(ev.target.value),
-            style:{...fieldStyle, minWidth:130},
-            placeholder:"Ex: 16 mai 2026",
+            type:"date",
+            value: (() => {
+              // Convertir "16 mai 2026" → "2026-05-16" pour l'input date
+              try {
+                const d = new Date(dateSession);
+                if (!isNaN(d)) return d.toISOString().slice(0,10);
+              } catch(e){}
+              return dateSession;
+            })(),
+            onChange: ev => {
+              // Reconvertir "2026-05-16" → "16 mai 2026" pour l'affichage et les exports
+              const d = new Date(ev.target.value);
+              if (!isNaN(d)) {
+                setDateSession(d.toLocaleDateString("fr-FR", {day:"2-digit",month:"long",year:"numeric"}));
+              }
+            },
+            style:{...fieldStyle, minWidth:140, colorScheme:"dark"},
           })
         ),
         // Mot de passe IA
@@ -502,7 +521,8 @@ function App() {
           fieldLabel("🔑 Mot de passe IA"),
           e('div', { style:{display:"flex", gap:6, alignItems:"center"} },
             e('input', {
-              type:"password", value:mdp,
+              type: showMdp ? "text" : "password",
+              value:mdp,
               onChange: ev => { setMdp(ev.target.value); setMdpStatus("idle"); setApiKey(""); },
               onKeyDown: ev => {
                 if (ev.key === "Enter") {
@@ -512,9 +532,18 @@ function App() {
                   });
                 }
               },
-              style:{...fieldStyle, minWidth:160, fontFamily:"monospace"},
+              style:{...fieldStyle, minWidth:140, fontFamily:"monospace"},
               placeholder:"Mot de passe…",
             }),
+            e('button', {
+              onClick: () => setShowMdp(s => !s),
+              title: showMdp ? "Masquer" : "Afficher",
+              style:{
+                background:"rgba(255,255,255,0.15)",
+                border:"none", borderRadius:7, color:"#fff",
+                padding:"5px 9px", fontSize:14, cursor:"pointer",
+              }
+            }, showMdp ? "🙈" : "👁"),
             e('button', {
               onClick: () => verifyAndDecrypt(mdp).then(k => {
                 if (k) { setApiKey(k); setMdpStatus("ok"); }
