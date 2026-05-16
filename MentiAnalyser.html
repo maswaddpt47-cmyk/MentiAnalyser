@@ -261,8 +261,11 @@ ${qTableRows}
   const blob = new Blob([rtf], { type:"application/rtf" });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
-  a.href = url; a.download = "Synthese_6D.rtf"; a.click();
-  URL.revokeObjectURL(url);
+  a.href = url; a.download = "Synthese_6D.rtf";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
 }
 
 // ── EXPORT B — SYNTHÈSE NARRATIVE RTF (statique, sans API) ───────────────────
@@ -345,11 +348,19 @@ ${rtfBody}
 {\\pard\\sb400\\sa0\\fs16\\cf2 ${foot}\\par}
 }`;
 
+    // Téléchargement — compatible Android/mobile
     const blob = new Blob([rtf], {type:"application/rtf"});
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
-    a.href = url; a.download = "Synthese_narrative.rtf"; a.click();
-    URL.revokeObjectURL(url);
+    a.href     = url;
+    a.download = "Synthese_narrative.rtf";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
   })
   .catch(err => alert("Erreur API : " + err.message));
 }
