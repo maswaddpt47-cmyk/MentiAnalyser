@@ -301,7 +301,7 @@ Ton sobre et institutionnel. Environ 450 mots. Pas de markdown. Texte pur avec t
       "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-3-5-sonnet-20241022",
       max_tokens: 1000,
       messages: [{ role: "user", content: prompt }]
     })
@@ -499,21 +499,22 @@ function App() {
           e('input', {
             type:"date",
             value: (() => {
-              // Convertir "16 mai 2026" → "2026-05-16" pour l'input date
-              try {
-                const d = new Date(dateSession);
-                if (!isNaN(d)) return d.toISOString().slice(0,10);
-              } catch(e){}
-              return dateSession;
+              // Convertir "16 mai 2026" → "2026-05-16"
+              const mois = {janvier:"01",février:"02",mars:"03",avril:"04",mai:"05",juin:"06",
+                juillet:"07",août:"08",septembre:"09",octobre:"10",novembre:"11",décembre:"12"};
+              const m = dateSession.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
+              if (m) {
+                const mm = mois[m[2].toLowerCase()];
+                if (mm) return `${m[3]}-${mm}-${m[1].padStart(2,'0')}`;
+              }
+              return "";
             })(),
             onChange: ev => {
-              // Reconvertir "2026-05-16" → "16 mai 2026" pour l'affichage et les exports
-              const d = new Date(ev.target.value);
-              if (!isNaN(d)) {
-                setDateSession(d.toLocaleDateString("fr-FR", {day:"2-digit",month:"long",year:"numeric"}));
-              }
+              if (!ev.target.value) return;
+              const d = new Date(ev.target.value + "T12:00:00");
+              setDateSession(d.toLocaleDateString("fr-FR", {day:"2-digit",month:"long",year:"numeric"}));
             },
-            style:{...fieldStyle, minWidth:140, colorScheme:"dark"},
+            style:{...fieldStyle, minWidth:150, colorScheme:"dark"},
           })
         ),
         // Mot de passe IA
