@@ -11,6 +11,7 @@
 <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -253,6 +254,165 @@ function importJSON(file, callbacks) {
   reader.readAsText(file);
 }
 
+// ── EMAIL DIRECT ──────────────────────────────────────────────────────────────
+function envoyerEmail(atelier, partenaire, animateur, participants, dateSession, niveauPublic, qs) {
+  const score  = globalScore(qs);
+  const themes = byTheme(qs);
+  const today  = dateSession || new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
+  const forts  = themes.filter(t=>t.taux>=80).map(t=>`  - ${t.theme} : ${t.taux}%`).join('\n');
+  const faibles= themes.filter(t=>t.taux<60).map(t=>`  - ${t.theme} : ${t.taux}%`).join('\n');
+  const sujet  = encodeURIComponent(`Bilan atelier numérique — ${atelier||'Atelier'} — ${today}`);
+  const corps  = encodeURIComponent(
+`Bonjour,
+
+Veuillez trouver ci-dessous le bilan de l'atelier de médiation numérique.
+
+Atelier : ${atelier||'—'}
+Public : ${partenaire||'—'}${niveauPublic?' ('+niveauPublic+')':''}
+Animateur : ${animateur||'—'}
+Date : ${today}
+Participants : ${participants||'—'}
+
+RÉSULTATS GLOBAUX
+Score moyen : ${score}%
+Questions analysées : ${qs.length}
+Acquis : ${qs.filter(q=>q.taux>=80).length} question(s)
+Fragiles : ${qs.filter(q=>q.taux>=60&&q.taux<80).length} question(s)
+À renforcer : ${qs.filter(q=>q.taux<60).length} question(s)
+
+POINTS FORTS
+${forts||'  Aucun thème ≥ 80%'}
+
+AXES DE RENFORCEMENT
+${faibles||'  Aucun thème < 60%'}
+
+Ce bilan a été généré par MentiAnalyser — Conseil Départemental du Lot-et-Garonne.
+`);
+  window.open(`mailto:?subject=${sujet}&body=${corps}`);
+}
+
+// ── EXPORT PPTX ───────────────────────────────────────────────────────────────
+async function exportPPTX(atelier, partenaire, animateur, participants, dateSession, niveauPublic, qs) {
+  if (typeof PptxGenJS === 'undefined') { alert("Librairie PPTX non chargée."); return; }
+  const pptx   = new PptxGenJS();
+  const score  = globalScore(qs);
+  const themes = byTheme(qs);
+  const today  = dateSession || new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
+  const scoreColor = score>=80?"#16a34a":score>=60?"#d97706":"#dc2626";
+
+  pptx.layout = "LAYOUT_16x9";
+  pptx.author = animateur || "MentiAnalyser";
+  pptx.company = "Conseil Départemental du Lot-et-Garonne";
+
+  // Slide 1 — Page de garde
+  const s1 = pptx.addSlide();
+  s1.background = {color:"1e3a8a"};
+  s1.addText("Conseil Départemental du Lot-et-Garonne · MentiAnalyser", {x:0.5,y:0.3,w:9,h:0.4,fontSize:11,color:"93c5fd",align:"center"});
+  s1.addText(atelier||"Analyse Mentimeter", {x:0.5,y:1.0,w:9,h:1.2,fontSize:36,bold:true,color:"FFFFFF",align:"center"});
+  s1.addText([
+    {text:`${partenaire||''}${niveauPublic?' · '+niveauPublic:''}`, options:{fontSize:16,color:"bfdbfe"}},
+  ], {x:0.5,y:2.4,w:9,h:0.5,align:"center"});
+  s1.addText(`${today}  ·  ${participants||'?'} participants  ·  ${qs.length} questions`, {x:0.5,y:3.0,w:9,h:0.4,fontSize:13,color:"93c5fd",align:"center"});
+  if (animateur) s1.addText(`Animé par ${animateur}`, {x:0.5,y:3.5,w:9,h:0.4,fontSize:13,color:"93c5fd",align:"center"});
+
+  // Slide 2 — Score global
+  const s2 = pptx.addSlide();
+  s2.background = {color:"f8fafc"};
+  s2.addText("Score global", {x:0.5,y:0.3,w:9,h:0.5,fontSize:14,bold:true,color:"1e40af"});
+  s2.addText(`${score}%`, {x:2.5,y:1.0,w:5,h:2.0,fontSize:96,bold:true,color:scoreColor.slice(1),align:"center"});
+  s2.addText("de bonnes réponses en moyenne", {x:1,y:3.0,w:8,h:0.4,fontSize:16,color:"64748b",align:"center"});
+  const stats = [
+    {label:"✅ Acquis",v:qs.filter(q=>q.taux>=80).length,c:"16a34a"},
+    {label:"⚠️ Fragiles",v:qs.filter(q=>q.taux>=60&&q.taux<80).length,c:"d97706"},
+    {label:"🔴 À renforcer",v:qs.filter(q=>q.taux<60).length,c:"dc2626"},
+  ];
+  stats.forEach((st,i)=>{
+    s2.addText(st.label, {x:0.3+i*3.2,y:3.6,w:3,h:0.4,fontSize:12,color:"475569",align:"center"});
+    s2.addText(String(st.v), {x:0.3+i*3.2,y:4.0,w:3,h:0.6,fontSize:32,bold:true,color:st.c,align:"center"});
+  });
+
+  // Slide 3 — Résultats par thème (barres textuelles)
+  const s3 = pptx.addSlide();
+  s3.background = {color:"f8fafc"};
+  s3.addText("Résultats par thème", {x:0.5,y:0.2,w:9,h:0.5,fontSize:14,bold:true,color:"1e40af"});
+  themes.forEach((t,i)=>{
+    const y=0.8+i*0.52;
+    const col=t.taux>=80?"16a34a":t.taux>=60?"d97706":"ef4444";
+    const pct=Math.round(t.taux/100*6);
+    s3.addText(t.theme, {x:0.3,y,w:2.2,h:0.42,fontSize:11,color:"334155",valign:"middle"});
+    s3.addShape(pptx.shapes.RECTANGLE,{x:2.6,y:y+0.06,w:pct||0.05,h:0.3,fill:{color:col},line:{color:col}});
+    s3.addText(`${t.taux}%`, {x:2.6+(pct||0.1)+0.1,y,w:0.8,h:0.42,fontSize:11,bold:true,color:col,valign:"middle"});
+    s3.addText(`${t.correct}/${t.total}`, {x:9.2,y,w:0.6,h:0.42,fontSize:9,color:"94a3b8",valign:"middle",align:"right"});
+  });
+
+  // Slides 4+ — Une slide par thème avec ses questions
+  const themeGroups = {};
+  qs.forEach(q=>{ if(!themeGroups[q.theme]) themeGroups[q.theme]=[]; themeGroups[q.theme].push(q); });
+  Object.entries(themeGroups).forEach(([theme,qs2])=>{
+    const sl = pptx.addSlide();
+    sl.background = {color:"f8fafc"};
+    sl.addText(theme, {x:0.5,y:0.2,w:9,h:0.5,fontSize:14,bold:true,color:"1e40af"});
+    qs2.slice(0,8).forEach((q,i)=>{
+      const y=0.85+i*0.52;
+      const col=q.taux>=80?"16a34a":q.taux>=60?"d97706":"ef4444";
+      sl.addText(q.q.slice(0,70)+(q.q.length>70?"…":""), {x:0.3,y,w:7.5,h:0.42,fontSize:10,color:"1e293b",valign:"middle"});
+      sl.addText(`${q.taux}%`, {x:8.2,y,w:1.5,h:0.42,fontSize:12,bold:true,color:col,align:"right",valign:"middle"});
+    });
+  });
+
+  // Slide finale — Points forts et axes
+  const sf = pptx.addSlide();
+  sf.background = {color:"1e3a8a"};
+  sf.addText("Points forts", {x:0.5,y:0.3,w:4,h:0.5,fontSize:14,bold:true,color:"86efac"});
+  themes.filter(t=>t.taux>=80).forEach((t,i)=>{
+    sf.addText(`✅ ${t.theme} — ${t.taux}%`, {x:0.5,y:0.9+i*0.45,w:4,h:0.4,fontSize:12,color:"dcfce7"});
+  });
+  sf.addText("Axes de renforcement", {x:5,y:0.3,w:4.5,h:0.5,fontSize:14,bold:true,color:"fca5a5"});
+  themes.filter(t=>t.taux<60).forEach((t,i)=>{
+    sf.addText(`🔴 ${t.theme} — ${t.taux}%`, {x:5,y:0.9+i*0.45,w:4.5,h:0.4,fontSize:12,color:"fee2e2"});
+  });
+  sf.addText("MentiAnalyser — Conseil Départemental du Lot-et-Garonne", {x:0.5,y:4.8,w:9,h:0.35,fontSize:10,color:"93c5fd",align:"center"});
+
+  const safe = (atelier||"Presentation").replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,40);
+  await pptx.writeFile({fileName:`${safe}.pptx`});
+}
+
+// ── EXPORT PDF AVEC SYNTHÈSE IA ───────────────────────────────────────────────
+async function exportPDFAvecIA(atelier, partenaire, animateur, participants, dateSession, niveauPublic, qs, apiKey) {
+  if (!apiKey) { alert("Clé API requise pour la synthèse IA."); return; }
+  const score  = globalScore(qs);
+  const themes = byTheme(qs);
+  const today  = dateSession || new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
+
+  const prompt = `Tu es conseiller numérique au Conseil Départemental du Lot-et-Garonne.
+Rédige une synthèse professionnelle pour la direction d'un établissement scolaire.
+Atelier : ${atelier} — ${partenaire} — ${today} — ${participants||'?'} participants — ${qs.length} questions.
+${animateur?'Animé par : '+animateur+'.':''}
+Score global : ${score}%
+Résultats par thème :
+${themes.map(t=>`- ${t.theme} : ${t.taux}% (${t.correct}/${t.total})`).join('\n')}
+Points critiques (< 50%) : ${qs.filter(q=>q.taux<50).map(q=>`"${q.q}" : ${q.taux}%`).join(' | ')}
+Parfaitement maîtrisés (100%) : ${qs.filter(q=>q.taux===100).map(q=>`"${q.q}"`).join(' | ')}
+Rédige en français une synthèse structurée : 1.Contexte 2.Résultats globaux 3.Points forts 4.Lacunes 5.Recommandations 6.Conclusion
+Ton sobre et institutionnel. Environ 400 mots. Pas de markdown. Texte pur avec titres numérotés.`;
+
+  let narratif = "";
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":apiKey,
+        "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body: JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:1000,
+        messages:[{role:"user",content:prompt}]})
+    });
+    const data = await resp.json();
+    if (!data.error) narratif = data.content?.map(b=>b.text||'').join('\n').trim() || "";
+  } catch(e) { console.warn("IA indisponible:", e); }
+
+  // Appeler exportPDF normal en passant le texte narratif
+  exportPDF(atelier, partenaire, animateur, participants, dateSession, qs, niveauPublic, narratif);
+}
+
 // ── EXPORT CSV ────────────────────────────────────────────────────────────────
 function exportCSV(atelier, partenaire, qs=questions) {
   const safeName = (atelier||"Export").replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,40);
@@ -274,7 +434,7 @@ function exportCSV(atelier, partenaire, qs=questions) {
 }
 
 // ── EXPORT A — HTML avec graphiques SVG → impression PDF ─────────────────────
-function exportPDF(atelier, partenaire, animateur, participants, dateSession, qs=[], niveauPublic="") {
+function exportPDF(atelier, partenaire, animateur, participants, dateSession, qs=[], niveauPublic="", narratif="") {
   const themes = byTheme(qs), score = globalScore(qs);
   const today  = dateSession || new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
   const nb     = participants || "?";
@@ -486,6 +646,18 @@ ${axesItems?`<div class="sec">
   <h2>🔴 Axes de renforcement prioritaires</h2>
   <ul>${axesItems}</ul>
 </div>`:''}
+
+${narratif ? `<div class="sec pb">
+  <h2>📝 Synthèse pédagogique</h2>
+  <div style="font-size:13px;line-height:1.8;color:#1e293b">
+    ${narratif.split('\n').map(l=>{
+      const t=l.trim();
+      if(!t) return '<br/>';
+      if(/^\d+\./.test(t)) return `<p style="font-weight:700;margin:14px 0 6px;color:#1e40af">${t}</p>`;
+      return `<p style="margin:0 0 6px">${t}</p>`;
+    }).join('')}
+  </div>
+</div>` : ''}
 
 <div class="sec pb">
   <h2>📋 Détail par question <span style="font-size:11px;font-weight:400;color:#94a3b8">(tri par taux croissant)</span></h2>
@@ -830,6 +1002,10 @@ function App() {
   const [editingId,     setEditingId]      = useState(null);
   const [sessions,      setSessions]       = useState([]);
   const [showCompare,   setShowCompare]    = useState(false);
+  const [qSearch,       setQSearch]        = useState("");
+  const [qSort,         setQSort]          = useState({key:"taux",dir:"asc"});
+  const [showPresent,   setShowPresent]    = useState(false);
+  const [presentIdx,    setPresentIdx]     = useState(0);
 
   const themes      = byTheme(questionsData);
   const score       = globalScore(questionsData);
@@ -1006,84 +1182,49 @@ function App() {
     ),
     // Droite : boutons export
     e('div', { style:{display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, alignSelf:"center", minWidth:400}, className:"no-print" },
-      e('button', {
-        onClick: () => setShowUpload(true),
-        style:{ background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
-          padding:"10px 12px",fontWeight:700,fontSize:12,
-          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      e('button', { onClick:()=>setShowUpload(true),
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📤 Importer PNG/ZIP"),
-      e('button', {
-        onClick: () => exportJSON(atelier, partenaire, animateur, participants, dateSession, questionsData),
-        style:{ background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
-          padding:"10px 12px",fontWeight:700,fontSize:12,
-          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      e('button', { onClick:()=>exportJSON(atelier,partenaire,animateur,participants,dateSession,questionsData),
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "💾 Export JSON"),
       e('button', {
-        onClick: () => {
-          const label = atelier + (partenaire ? ` · ${partenaire}` : '') + (dateSession ? ` (${dateSession})` : '');
-          setSessions(prev => [...prev, {
-            id: Date.now(), label,
-            atelier, partenaire, dateSession, participants,
-            questions: questionsData, score: globalScore(questionsData),
-            themes: byTheme(questionsData),
-          }]);
-          setShowCompare(true);
-        },
-        style:{ background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
-          padding:"10px 12px",fontWeight:700,fontSize:12,
-          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
-      }, sessions.length>0 ? `📊 Comparer (${sessions.length+1})` : "📌 Archiver"),
+        onClick:()=>{ const label=atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:''); setSessions(prev=>[...prev,{id:Date.now(),label,atelier,partenaire,dateSession,participants,questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData)}]); setShowCompare(true); },
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, sessions.length>0?`📊 Comparer (${sessions.length+1})`:"📌 Archiver"),
       e('button', {
-        onClick: () => {
-          if (!confirm("Réinitialiser toutes les données et les champs ?")) return;
-          setAtelier(""); setPartenaire(""); setAnimateur(""); setParticipants("");
-          setDateSession(""); setNiveauPublic(""); setQuestionsData([]);
-          setActiveTheme(null); setTab("themes"); setSessions([]); setEditingId(null);
-        },
-        style:{ background:"rgba(239,68,68,0.25)",color:"#fecaca",border:"1px solid rgba(239,68,68,0.4)",borderRadius:10,
-          padding:"10px 12px",fontWeight:700,fontSize:12,
-          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+        onClick:()=>{ if(!confirm("Réinitialiser toutes les données et les champs ?")) return; setAtelier(""); setPartenaire(""); setAnimateur(""); setParticipants(""); setDateSession(""); setNiveauPublic(""); setQuestionsData([]); setActiveTheme(null); setTab("themes"); setSessions([]); setEditingId(null); },
+        style:{background:"rgba(239,68,68,0.25)",color:"#fecaca",border:"1px solid rgba(239,68,68,0.4)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "🔄 Réinitialiser"),
-      e('button', {
-        onClick: () => document.getElementById('json-import-input').click(),
-        style:{ background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
-          padding:"10px 12px",fontWeight:700,fontSize:12,
-          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      e('button', { onClick:()=>document.getElementById('json-import-input').click(),
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📂 Import JSON"),
-      e('button', {
-        onClick: () => exportCSV(atelier, partenaire, questionsData),
-        style:{ background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
-          padding:"10px 12px",fontWeight:700,fontSize:12,
-          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      e('button', { onClick:()=>exportCSV(atelier,partenaire,questionsData),
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📥 Export CSV"),
-      e('button', {
-        onClick: () => setShowSeuils(s=>!s),
-        style:{ background:showSeuils?"rgba(255,255,255,0.3)":"rgba(255,255,255,0.15)",color:"#fff",
-          border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
-          padding:"10px 12px",fontWeight:700,fontSize:12,
-          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      e('button', { onClick:()=>setShowSeuils(s=>!s),
+        style:{background:showSeuils?"rgba(255,255,255,0.3)":"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, `⚙️ Seuils ${seuilBas}/${seuilHaut}`),
+      e('button', { onClick:()=>envoyerEmail(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData),
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "✉️ Email"),
+      e('button', { onClick:()=>exportPPTX(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData),
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "📑 Export PPTX"),
       e('button', {
-        onClick: () => exportPDF(atelier, partenaire, animateur, participants, dateSession, questionsData, niveauPublic),
-        style:{ background:"#fff",color:"#1e40af",border:"none",borderRadius:10,
-          padding:"10px 12px",fontWeight:700,fontSize:12,
-          display:"flex",alignItems:"center",justifyContent:"center",gap:6,
-          boxShadow:"0 2px 10px rgba(0,0,0,0.18)" }
+        onClick:()=>{ if(questionsData.length>0){setPresentIdx(0);setShowPresent(true);} else alert("Aucune question à présenter."); },
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "🎬 Présenter"),
+      e('button', {
+        onClick:()=>exportPDF(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic),
+        style:{background:"#fff",color:"#1e40af",border:"none",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:"0 2px 10px rgba(0,0,0,0.18)"}
       }, "📊 Export PDF"),
       e('button', {
-        onClick: () => exportSynthese(atelier, partenaire, animateur, participants, dateSession, apiKey, questionsData),
-        disabled: !apiKey,
-        title: apiKey ? "" : "Entrez votre mot de passe IA pour activer",
-        style:{
-          background: apiKey ? "#7c3aed" : "#94a3b8",
-          color:"#fff", border:"none", borderRadius:10,
-          padding:"10px 12px", fontWeight:700, fontSize:12,
-          display:"flex", alignItems:"center", justifyContent:"center", gap:6,
-          boxShadow: apiKey ? "0 2px 10px rgba(0,0,0,0.2)" : "none",
-          cursor: apiKey ? "pointer" : "not-allowed",
-          transition:"background .2s",
-        }
-      }, "📝 Synthèse (IA)")
+        onClick:()=>exportPDFAvecIA(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData,apiKey),
+        disabled:!apiKey,
+        title:apiKey?"":"Entrez votre mot de passe IA pour activer",
+        style:{background:apiKey?"#7c3aed":"#94a3b8",color:"#fff",border:"none",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:apiKey?"0 2px 10px rgba(0,0,0,0.2)":"none",cursor:apiKey?"pointer":"not-allowed"}
+      }, "📝 PDF + IA"),
     ),
 
     // ── MODALE UPLOAD PNG — ANALYSE AUTOMATIQUE VIA API
@@ -1418,6 +1559,18 @@ function App() {
   );
 
   // ── VUE QUESTIONS
+  const sortFn = (a,b) => {
+    const dir = qSort.dir==="asc" ? 1 : -1;
+    if (qSort.key==="taux")  return (a.taux-b.taux)*dir;
+    if (qSort.key==="theme") return a.theme.localeCompare(b.theme)*dir;
+    if (qSort.key==="q")     return a.q.localeCompare(b.q)*dir;
+    return 0;
+  };
+  const sortBtn = (key, lbl) => e('button',{
+    onClick:()=>setQSort(s=>({key,dir:s.key===key&&s.dir==="asc"?"desc":"asc"})),
+    style:{background:qSort.key===key?"#1e40af":"#e2e8f0",color:qSort.key===key?"#fff":"#475569",
+      border:"none",borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}
+  }, lbl+(qSort.key===key?(qSort.dir==="asc"?" ↑":" ↓"):""));
   const inputEd = (val, onChange, opts={}) => e('input',{
     value:val, onChange, ...opts,
     style:{border:"1px solid #bfdbfe",borderRadius:6,padding:"3px 7px",
@@ -1444,16 +1597,23 @@ function App() {
   };
 
   const vueQuestions = panel([
-    e('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
-      e('h2',{style:{margin:0,fontSize:14,fontWeight:700}},"Toutes les questions — tri par taux croissant"),
-      e('button',{onClick:addQ,style:{
-        background:"#1e40af",color:"#fff",border:"none",borderRadius:8,
-        padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",
-        display:"flex",alignItems:"center",gap:5,
-      }},"＋ Ajouter")
+    e('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}},
+      e('h2',{style:{margin:0,fontSize:14,fontWeight:700}},"Questions"),
+      e('div',{style:{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}},
+        e('input',{
+          value:qSearch, onChange:ev=>setQSearch(ev.target.value),
+          placeholder:"🔍 Rechercher…",
+          style:{border:"1px solid #e2e8f0",borderRadius:8,padding:"5px 10px",fontSize:12,outline:"none",width:160}
+        }),
+        sortBtn("taux","Taux"), sortBtn("theme","Thème"), sortBtn("q","Texte"),
+        e('button',{onClick:addQ,style:{background:"#1e40af",color:"#fff",border:"none",borderRadius:8,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}},"＋")
+      )
     ),
     e('div',{style:{display:"grid",gap:4}},
-      ...[...questionsData].sort((a,b)=>a.taux-b.taux).map(q => {
+      ...[...questionsData]
+        .filter(q=>!qSearch || q.q.toLowerCase().includes(qSearch.toLowerCase()) || q.theme.toLowerCase().includes(qSearch.toLowerCase()))
+        .sort(sortFn)
+        .map(q => {
         const isEditing = editingId === q.id;
         return e('div',{key:q.id,style:{
           borderRadius:10, border:`1px solid ${isEditing?"#bfdbfe":"#f1f5f9"}`,
@@ -1477,6 +1637,13 @@ function App() {
                   {type:"number",min:"0",style:{width:64}}),
                 e('span',{style:{fontSize:13,fontWeight:800,color:gc(q.taux),minWidth:36}},`${q.taux}%`),
               ),
+              e('textarea',{
+                value:q.note||"", placeholder:"💬 Note pédagogique…",
+                onChange:ev=>updateQ(q.id,{note:ev.target.value}),
+                rows:1,
+                style:{border:"1px solid #e2e8f0",borderRadius:6,padding:"4px 8px",fontSize:11,
+                  fontFamily:"inherit",outline:"none",background:"#f8fafc",width:"100%",resize:"vertical"}
+              }),
               e('div',{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
                 e('button',{onClick:()=>deleteQ(q.id),style:{
                   background:"#fef2f2",color:"#dc2626",border:"1px solid #fca5a5",
@@ -1489,28 +1656,30 @@ function App() {
               )
             )
           // ── Mode lecture
-          : e('div',{
-              style:{display:"grid",gridTemplateColumns:"1fr 130px 90px 110px 32px",
-                alignItems:"center",gap:10,cursor:"pointer"},
-              onClick:()=>setEditingId(q.id),
-              title:"Cliquer pour modifier",
-            },
-              e('div',{style:{fontSize:13}},q.q),
-              e('span',{style:{fontSize:11,fontWeight:600,color:"#6366f1",background:"#eef2ff",
-                borderRadius:6,padding:"2px 8px",textAlign:"center"}},q.theme),
-              e('div',{style:{display:"flex",alignItems:"center",gap:6}},
-                e('div',{style:{flex:1,background:"#e2e8f0",borderRadius:4,height:6,overflow:"hidden"}},
-                  e('div',{style:{width:`${q.taux}%`,height:"100%",background:gc(q.taux),borderRadius:4}})
+          : e('div',{style:{display:"flex",flexDirection:"column",gap:3}},
+              e('div',{
+                style:{display:"grid",gridTemplateColumns:"1fr 130px 90px 110px 32px",
+                  alignItems:"center",gap:10,cursor:"pointer"},
+                onClick:()=>setEditingId(q.id), title:"Cliquer pour modifier",
+              },
+                e('div',{style:{fontSize:13}},q.q),
+                e('span',{style:{fontSize:11,fontWeight:600,color:"#6366f1",background:"#eef2ff",
+                  borderRadius:6,padding:"2px 8px",textAlign:"center"}},q.theme),
+                e('div',{style:{display:"flex",alignItems:"center",gap:6}},
+                  e('div',{style:{flex:1,background:"#e2e8f0",borderRadius:4,height:6,overflow:"hidden"}},
+                    e('div',{style:{width:`${q.taux}%`,height:"100%",background:gc(q.taux),borderRadius:4}})
+                  ),
+                  e('span',{style:{fontSize:13,fontWeight:800,color:gc(q.taux),minWidth:34}},`${q.taux}%`)
                 ),
-                e('span',{style:{fontSize:13,fontWeight:800,color:gc(q.taux),minWidth:34}},`${q.taux}%`)
+                e(Badge,{taux:q.taux}),
+                e('button',{
+                  onClick:ev=>{ev.stopPropagation();deleteQ(q.id);},
+                  style:{background:"none",border:"none",color:"#cbd5e1",fontSize:16,cursor:"pointer",padding:0,lineHeight:1},
+                  title:"Supprimer"
+                },"✕")
               ),
-              e(Badge,{taux:q.taux}),
-              e('button',{
-                onClick:ev=>{ev.stopPropagation();deleteQ(q.id);},
-                style:{background:"none",border:"none",color:"#cbd5e1",fontSize:16,
-                  cursor:"pointer",padding:0,lineHeight:1},
-                title:"Supprimer"
-              },"✕")
+              q.note && e('div',{style:{fontSize:11,color:"#64748b",fontStyle:"italic",paddingLeft:4}},
+                `💬 ${q.note}`)
             )
         );
       })
@@ -1746,6 +1915,74 @@ function App() {
         )
       )
     ),
+
+    // ── MODE PRÉSENTATION
+    showPresent && questionsData.length>0 && (() => {
+      const sorted = [...questionsData].sort(sortFn);
+      const q = sorted[presentIdx];
+      const lv = gl(q.taux);
+      return e('div',{
+        style:{position:"fixed",inset:0,background:"#0f172a",zIndex:2000,
+          display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32},
+        onKeyDown:ev=>{
+          if(ev.key==="ArrowRight"||ev.key==="ArrowDown") setPresentIdx(i=>Math.min(i+1,sorted.length-1));
+          if(ev.key==="ArrowLeft"||ev.key==="ArrowUp")   setPresentIdx(i=>Math.max(i-1,0));
+          if(ev.key==="Escape") setShowPresent(false);
+        },
+        tabIndex:0,
+        ref:el=>el&&el.focus(),
+      },
+        // Header présentation
+        e('div',{style:{position:"absolute",top:16,left:0,right:0,display:"flex",
+          justifyContent:"space-between",alignItems:"center",padding:"0 24px"}},
+          e('span',{style:{fontSize:12,color:"#475569"}},"MentiAnalyser · Mode présentation"),
+          e('div',{style:{display:"flex",gap:8}},
+            e('span',{style:{fontSize:13,color:"#94a3b8"}}),
+            e('button',{onClick:()=>setShowPresent(false),
+              style:{background:"rgba(255,255,255,0.1)",border:"none",color:"#94a3b8",
+                fontSize:20,borderRadius:8,padding:"4px 12px",cursor:"pointer"}},"✕")
+          )
+        ),
+        // Numéro
+        e('div',{style:{fontSize:13,color:"#475569",marginBottom:16}},
+          `${presentIdx+1} / ${sorted.length}`),
+        // Thème
+        e('div',{style:{fontSize:13,color:"#6366f1",background:"#1e1b4b",
+          borderRadius:8,padding:"4px 14px",marginBottom:24,fontWeight:700}}, q.theme),
+        // Question
+        e('div',{style:{fontSize:28,fontWeight:800,color:"#f1f5f9",textAlign:"center",
+          maxWidth:760,lineHeight:1.4,marginBottom:32}}, q.q),
+        // Taux + badge
+        e('div',{style:{display:"flex",alignItems:"center",gap:20,marginBottom:24}},
+          e('div',{style:{fontSize:72,fontWeight:900,color:gc(q.taux),lineHeight:1}},`${q.taux}%`),
+          e('div',{style:{background:lv.bg,color:lv.color,border:`2px solid ${lv.color}44`,
+            borderRadius:16,padding:"10px 22px",fontSize:18,fontWeight:700}},
+            lv.icon+" "+lv.label)
+        ),
+        // Détail
+        q.total>0 && e('div',{style:{fontSize:16,color:"#64748b"}},
+          `${q.correct} bonne(s) réponse(s) sur ${q.total}`),
+        // Note
+        q.note && e('div',{style:{marginTop:20,background:"rgba(255,255,255,0.05)",
+          borderRadius:10,padding:"10px 20px",fontSize:14,color:"#94a3b8",fontStyle:"italic"}},
+          `💬 ${q.note}`),
+        // Navigation
+        e('div',{style:{position:"absolute",bottom:24,left:0,right:0,
+          display:"flex",justifyContent:"center",gap:16}},
+          e('button',{onClick:()=>setPresentIdx(i=>Math.max(i-1,0)),
+            disabled:presentIdx===0,
+            style:{background:presentIdx===0?"#1e293b":"#1e40af",color:presentIdx===0?"#475569":"#fff",
+              border:"none",borderRadius:10,padding:"10px 24px",fontSize:14,fontWeight:700,
+              cursor:presentIdx===0?"not-allowed":"pointer"}},"← Précédent"),
+          e('button',{onClick:()=>setPresentIdx(i=>Math.min(i+1,sorted.length-1)),
+            disabled:presentIdx===sorted.length-1,
+            style:{background:presentIdx===sorted.length-1?"#1e293b":"#1e40af",
+              color:presentIdx===sorted.length-1?"#475569":"#fff",
+              border:"none",borderRadius:10,padding:"10px 24px",fontSize:14,fontWeight:700,
+              cursor:presentIdx===sorted.length-1?"not-allowed":"pointer"}},"Suivant →")
+        )
+      );
+    })(),
 
     e('div',{style:{padding:"28px 32px",maxWidth:1200,margin:"0 auto"}},
       statCards, tabs,
