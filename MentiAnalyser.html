@@ -503,7 +503,22 @@ ${axesItems?`<div class="sec">
 <div class="ft" style="display:flex;justify-content:space-between;align-items:center">
   <span>Document généré automatiquement — Atelier médiation numérique — Conseil Départemental du Lot-et-Garonne${niveauPublic?' · '+niveauPublic:''}</span>
   <div style="text-align:center">
-    <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`MentiAnalyser · ${atelier||'Atelier'} · ${partenaire||''} · Score: ${score}%`)}" width="80" height="80" style="border:2px solid #e2e8f0;border-radius:6px" onerror="this.style.display='none'"/>
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(
+      [
+        atelier      ? 'Atelier : '+atelier       : null,
+        partenaire   ? 'Public : '+partenaire     : null,
+        niveauPublic ? 'Niveau : '+niveauPublic   : null,
+        animateur    ? 'Animateur : '+animateur   : null,
+        today        ? 'Date : '+today            : null,
+        nb           ? 'Participants : '+nb        : null,
+        'Score : '+score+'%',
+        'Questions : '+qs.length,
+        'Acquis : '+qs.filter(q=>q.taux>=80).length,
+        'Fragiles : '+qs.filter(q=>q.taux>=60&&q.taux<80).length,
+        'A renforcer : '+qs.filter(q=>q.taux<60).length,
+        'Top 3 : '+byTheme(qs).slice(-3).map(t=>t.theme+' '+t.taux+'%').join(', '),
+      ].filter(Boolean).join('\n')
+    )}" width="100" height="100" style="border:2px solid #e2e8f0;border-radius:6px" onerror="this.style.display='none'"/>
     <div style="font-size:8px;color:#94a3b8;margin-top:3px">Résumé session</div>
   </div>
 </div>
