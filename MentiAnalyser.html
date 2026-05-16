@@ -3,21 +3,50 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Prudence sur Internet — Classe 6D</title>
+<title>MentiAnalyser — Conseil Départemental 47</title>
 
-<!-- Dépendances dans le bon ordre : React → ReactDOM → PropTypes → Recharts -->
 <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
 <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#eef2ff 0%,#f8fafc 55%,#f0fdf4 100%);min-height:100vh;color:#1e293b}
 button{cursor:pointer;font-family:inherit}
+@media print {
+  body{background:#fff !important}
+  .no-print{display:none !important}
+  .print-only{display:block !important}
+  #root > div > div:first-child{background:#1e40af !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @page{margin:15mm;size:A4}
+}
+/* Avertissement portrait */
+#portrait-warning{
+  display:none;
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#1e3a8a,#2563eb);
+  color:#fff;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  text-align:center;padding:32px;
+}
+@media (orientation:portrait) and (max-width:768px){
+  #portrait-warning{display:flex}
+}
 </style>
 </head>
 <body>
+
+<!-- Avertissement orientation -->
+<div id="portrait-warning">
+  <div style="font-size:56px">📱↔️</div>
+  <div style="font-size:20px;font-weight:800">Tournez votre écran</div>
+  <div style="font-size:14px;color:#bfdbfe;max-width:260px">
+    MentiAnalyser est optimisé en mode paysage pour afficher les graphiques correctement.
+  </div>
+</div>
+
 <div id="root"></div>
 
 <script>
@@ -108,29 +137,38 @@ const questions = [
 ];
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
-const getColor = t => t >= 80 ? "#22c55e" : t >= 60 ? "#f59e0b" : "#ef4444";
-const getLevel = t => t >= 80
+const getColor = (t, bas=60, haut=80) => t >= haut ? "#22c55e" : t >= bas ? "#f59e0b" : "#ef4444";
+const getLevel = (t, bas=60, haut=80) => t >= haut
   ? { label:"Acquis",      icon:"✅", color:"#16a34a", bg:"#f0fdf4" }
-  : t >= 60
+  : t >= bas
   ? { label:"Fragile",     icon:"⚠️", color:"#d97706", bg:"#fffbeb" }
   : { label:"À renforcer", icon:"🔴", color:"#dc2626", bg:"#fef2f2" };
 
-const byTheme = () => {
+const byTheme = (qs=[]) => {
   const map = {};
-  questions.forEach(({ theme, correct, total }) => {
-    if (!map[theme]) map[theme] = { theme, correct:0, total:0 };
-    map[theme].correct += correct;
-    map[theme].total   += total;
+  qs.forEach(({ theme, correct, total, taux }) => {
+    if (!map[theme]) map[theme] = { theme, correct:0, total:0, tauxSum:0, count:0 };
+    map[theme].correct  += correct;
+    map[theme].total    += total;
+    map[theme].tauxSum  += (taux || 0);
+    map[theme].count++;
   });
   return Object.values(map)
-    .map(d => ({ ...d, taux: Math.round(d.correct / d.total * 100) }))
+    .map(d => ({
+      ...d,
+      taux: d.total > 0
+        ? Math.round(d.correct / d.total * 100)
+        : (d.count > 0 ? Math.round(d.tauxSum / d.count) : 0)
+    }))
     .sort((a, b) => a.taux - b.taux);
 };
 
-const globalScore = () => {
-  const tot = questions.reduce((a,q) => a + q.total, 0);
-  const cor = questions.reduce((a,q) => a + q.correct, 0);
-  return Math.round(cor / tot * 100);
+const globalScore = (qs=[]) => {
+  const tot = qs.reduce((a,q) => a + q.total, 0);
+  const cor = qs.reduce((a,q) => a + q.correct, 0);
+  if (tot > 0) return Math.round(cor / tot * 100);
+  if (qs.length > 0) return Math.round(qs.reduce((a,q) => a + (q.taux||0), 0) / qs.length);
+  return 0;
 };
 
 // ── TOOLTIP TRANSPARENT ───────────────────────────────────────────────────────
@@ -182,110 +220,320 @@ function rtfRow(cells, widths, isHeader=false) {
   return `\\trowd\\trgaph108\\trrh-320\n${cellDefs}\n${cellContents}\n\\row\n\\pard`;
 }
 
-// ── EXPORT A — VRAI RTF → .rtf ────────────────────────────────────────────────
-function exportHTM(atelier, partenaire, animateur, participants, dateSession) {
-  const themes = byTheme(), score = globalScore();
-  const today = dateSession || new Date().toLocaleDateString("fr-FR", {day:"2-digit",month:"long",year:"numeric"});
-  const nb = participants || "?";
-  const scoreMsg = score>=80
-    ? rtfEncode("La classe démontre une bonne maîtrise globale des usages numériques responsables.")
-    : rtfEncode("Des lacunes importantes méritent une attention pédagogique ciblée.");
+// ── CLEF LOCALSTORAGE ─────────────────────────────────────────────────────────
+const LS_KEY = "mentianalyser_session";
 
-  // Tableau thèmes : col widths en twips (total ~8640 = 6 pouces)
-  const TW = [2400, 1200, 1000, 2040]; // Thème | Rép. | Taux | Niveau
-  const themeTableRows = themes.map(t => {
-    const lv = getLevel(t.taux);
-    const niveauTxt = lv.label === "Acquis" ? "Acquis" : lv.label === "Fragile" ? "Fragile" : "A renforcer";
-    return rtfRow([t.theme, `${t.correct}/${t.total}`, `${t.taux}%`, niveauTxt], TW);
-  }).join('\n');
-
-  // Tableau questions : col widths
-  const QW = [4200, 1400, 900, 2140];
-  const qTableRows = [...questions].sort((a,b)=>a.taux-b.taux).map(q => {
-    const lv = getLevel(q.taux);
-    const niveauTxt = lv.label === "Acquis" ? "Acquis" : lv.label === "Fragile" ? "Fragile" : "A renforcer";
-    return rtfRow([q.q, q.theme, `${q.taux}%`, niveauTxt], QW);
-  }).join('\n');
-
-  // Listes à puces (texte déjà en ASCII safe + séquences \'xx directes)
-  const fortsLines = themes.filter(t=>t.taux>=80)
-    .map(t => `\\pard\\li360\\fi-360\\sb60\\sa60\\fs20 \\bullet  ${rtfEncode(t.theme)} \\endash  ${t.taux}%\\par`).join('\n');
-  const faiblesLines = themes.filter(t=>t.taux<60)
-    .map(t => `\\pard\\li360\\fi-360\\sb60\\sa60\\fs20 \\bullet  ${rtfEncode(t.theme)} \\endash  ${t.taux}% \\endash  s\\'e9ance d\\'e9di\\'e9e recommand\\'e9e\\par`).join('\n');
-  const recoLines = [
-    "Atelier d\\'e9di\\'e9 sur la compr\\'e9hension des algorithmes de recommandation et la publicit\\'e9 cibl\\'e9e.",
-    "Travailler le droit \\lquote image en contexte scolaire (sorties, \\'e9v\\'e9nements collectifs).",
-    "Renforcer la connaissance des recours institutionnels : CNIL, signalement sur les plateformes.",
-    "Aborder la notion de trace num\\'e9rique permanente : likes, smileys et m\\'e9tadonn\\'e9es de localisation.",
-  ].map(l=>`\\pard\\li360\\fi-360\\sb60\\sa60\\fs20 \\bullet  ${l}\\par`).join('\n');
-
-  const rtf =
-`{\\rtf1\\ansi\\ansicpg1252\\deff0
-{\\fonttbl{\\f0\\froman\\fcharset0 Arial;}}
-{\\colortbl ;\\red30\\green64\\blue175;\\red255\\green255\\blue255;}
-\\paperw12240\\paperh15840\\margl1440\\margr1440\\margt1440\\margb1440
-\\f0\\widowctrl
-
-{\\pard\\sb0\\sa120\\b\\fs32\\cf1 ${rtfEncode(atelier || "Synthèse")}\\b0\\par}
-{\\pard\\sb0\\sa60\\fs18\\cf0 ${rtfEncode(partenaire || "")}  |  Date : ${rtfEncode(today)}  |  ${nb} \\'e9l\\'e8ves  |  ${questions.length} questions\\par}
-${animateur ? `{\\pard\\sb0\\sa80\\fs18\\cf0 Anim\\'e9 par : \\b ${rtfEncode(animateur)}\\b0\\par}` : ''}
-{\\pard\\sb0\\sa300\\fs8\\par}
-
-{\\pard\\sb60\\sa60\\b\\fs26\\cf1 Score global de la classe\\b0\\par}
-{\\pard\\sb0\\sa60\\b\\fs52\\cf1 ${score}%\\b0\\par}
-{\\pard\\sb0\\sa60\\fs20 de bonnes r\\'e9ponses en moyenne\\par}
-{\\pard\\sb0\\sa200\\fs20 ${scoreMsg}\\par}
-
-{\\pard\\sb200\\sa80\\b\\fs26\\cf1 R\\'e9sultats par th\\'e8me\\b0\\par}
-${rtfRow(["Th\\'e8me","R\\'e9ponses","Taux","Niveau"], TW, true)}
-${themeTableRows}
-{\\pard\\sb100\\sa0\\fs8\\par}
-
-{\\pard\\sb200\\sa80\\b\\fs26\\cf1 Points forts identifi\\'e9s\\b0\\par}
-${fortsLines}
-
-{\\pard\\sb200\\sa80\\b\\fs26\\cf1 Axes de renforcement prioritaires\\b0\\par}
-${faiblesLines}
-
-{\\pard\\sb200\\sa80\\b\\fs26\\cf1 Recommandations p\\'e9dagogiques\\b0\\par}
-${recoLines}
-
-{\\pard\\sb240\\sa80\\b\\fs26\\cf1 D\\'e9tail par question (tri par taux croissant)\\b0\\par}
-${rtfRow(["Question","Th\\'e8me","Taux","Niveau"], QW, true)}
-${qTableRows}
-{\\pard\\sb100\\sa0\\fs8\\par}
-
-{\\pard\\sb400\\sa0\\fs16\\cf0 Document g\\'e9n\\'e9r\\'e9 automatiquement \\emdash Atelier m\\'e9diation num\\'e9rique \\emdash Conseil D\\'e9partemental du Lot-et-Garonne\\par}
-}`;
-
-  const blob = new Blob([rtf], { type:"application/rtf" });
+// ── EXPORT JSON ───────────────────────────────────────────────────────────────
+function exportJSON(atelier, partenaire, animateur, participants, dateSession, qs) {
+  const payload = { atelier, partenaire, animateur, participants, dateSession, questions: qs,
+    _version: 1, _exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
-  a.href = url; a.download = "Synthese_6D.rtf";
+  const safe = (atelier||"Session").replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,40);
+  a.href = url; a.download = `${safe}.json`;
+  a.style.display = "none";
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+}
+
+// ── IMPORT JSON ───────────────────────────────────────────────────────────────
+function importJSON(file, callbacks) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data.questions) || data.questions.length === 0)
+        throw new Error("Fichier JSON invalide ou vide");
+      callbacks.onSuccess(data);
+    } catch(e) {
+      alert("❌ Impossible de lire ce fichier JSON : " + e.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── EXPORT CSV ────────────────────────────────────────────────────────────────
+function exportCSV(atelier, partenaire, qs=questions) {
+  const safeName = (atelier||"Export").replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,40);
+  const header = "id,question,theme,bonnes_reponses,total,taux,niveau\n";
+  const rows = qs.map(q => {
+    const niveau = q.taux>=80?"Acquis":q.taux>=60?"Fragile":"A renforcer";
+    const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+    return [q.id, esc(q.q), esc(q.theme), q.correct, q.total, q.taux, esc(niveau)].join(',');
+  }).join('\n');
+  const bom  = '\uFEFF'; // UTF-8 BOM pour Excel
+  const blob = new Blob([bom + header + rows], {type:"text/csv;charset=utf-8;"});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = `${safeName}.csv`;
   a.style.display = "none";
   document.body.appendChild(a);
   a.click();
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+  setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+}
+
+// ── EXPORT A — HTML avec graphiques SVG → impression PDF ─────────────────────
+function exportPDF(atelier, partenaire, animateur, participants, dateSession, qs=[], niveauPublic="") {
+  const themes = byTheme(qs), score = globalScore(qs);
+  const today  = dateSession || new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
+  const nb     = participants || "?";
+  const acquis      = qs.filter(q=>q.taux>=80).length;
+  const fragiles    = qs.filter(q=>q.taux>=60&&q.taux<80).length;
+  const areinforcer = qs.filter(q=>q.taux<60).length;
+  const scoreColor  = score>=80?"#16a34a":score>=60?"#d97706":"#dc2626";
+  const scoreBg     = score>=80?"#f0fdf4":score>=60?"#fffbeb":"#fef2f2";
+
+  // ── SVG barres horizontales par thème
+  const BH=28, GAP=10, LBL=145, MAX_BAR=340, VAL=50;
+  const svgH = themes.length*(BH+GAP);
+  const themesBars = themes.map((t,i)=>{
+    const y=i*(BH+GAP);
+    const bw=Math.round(t.taux/100*MAX_BAR);
+    const col=t.taux>=80?"#22c55e":t.taux>=60?"#f59e0b":"#ef4444";
+    const bg=t.taux>=80?"#dcfce7":t.taux>=60?"#fef9c3":"#fee2e2";
+    return `
+      <rect x="0" y="${y}" width="${LBL+MAX_BAR+VAL}" height="${BH}" rx="6" fill="${bg}" opacity="0.5"/>
+      <text x="${LBL-6}" y="${y+BH/2+4.5}" text-anchor="end" font-size="11.5" fill="#334155" font-family="Segoe UI,Arial,sans-serif">${t.theme}</text>
+      <rect x="${LBL}" y="${y+4}" width="${Math.max(bw,4)}" height="${BH-8}" fill="${col}" rx="4"/>
+      <text x="${LBL+bw+7}" y="${y+BH/2+4.5}" font-size="12.5" font-weight="700" fill="${col}" font-family="Segoe UI,Arial,sans-serif">${t.taux}%</text>
+      <text x="${LBL+MAX_BAR+VAL-2}" y="${y+BH/2+4.5}" text-anchor="end" font-size="10" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif">${t.correct}/${t.total}</text>`;
+  }).join('');
+
+  // ── SVG camembert répartition
+  const total=qs.length;
+  const pA=Math.round(acquis/total*100);
+  const pF=Math.round(fragiles/total*100);
+  const pR=100-pA-pF;
+  function svgArc(cx,cy,r,startPct,endPct,color){
+    const s=startPct/100*2*Math.PI-Math.PI/2;
+    const e=endPct/100*2*Math.PI-Math.PI/2;
+    const x1=cx+r*Math.cos(s), y1=cy+r*Math.sin(s);
+    const x2=cx+r*Math.cos(e), y2=cy+r*Math.sin(e);
+    const lg=(endPct-startPct)>50?1:0;
+    return `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${lg},1 ${x2},${y2} Z" fill="${color}"/>`;
+  }
+  const pieSvg = pA+pF+pR>0 ? `
+    ${svgArc(70,70,62,0,pA,"#22c55e")}
+    ${svgArc(70,70,62,pA,pA+pF,"#f59e0b")}
+    ${svgArc(70,70,62,pA+pF,100,"#ef4444")}
+    <circle cx="70" cy="70" r="34" fill="#fff"/>
+    <text x="70" y="66" text-anchor="middle" font-size="18" font-weight="900" fill="${scoreColor}" font-family="Segoe UI,Arial,sans-serif">${score}%</text>
+    <text x="70" y="80" text-anchor="middle" font-size="8.5" fill="#64748b" font-family="Segoe UI,Arial,sans-serif">global</text>` : '';
+
+  // ── Barre empilée
+  const stackedBars = [
+    [pA,"#22c55e"],[pF,"#f59e0b"],[pR,"#ef4444"]
+  ].map(([p,c])=>`<div style="width:${p}%;background:${c};height:100%"></div>`).join('');
+
+  // ── Tableau questions
+  const qRows=[...qs].sort((a,b)=>a.taux-b.taux).map((q,i)=>{
+    const col=q.taux>=80?"#16a34a":q.taux>=60?"#d97706":"#dc2626";
+    const bg=i%2===0?"#fff":"#f8fafc";
+    const lbl=q.taux>=80?"✅ Acquis":q.taux>=60?"⚠️ Fragile":"🔴 À renforcer";
+    return `<tr style="background:${bg}">
+      <td style="padding:6px 10px;font-size:11.5px">${q.q}</td>
+      <td style="padding:6px 8px;font-size:10px;color:#6366f1;text-align:center;white-space:nowrap">
+        <span style="background:#eef2ff;padding:2px 7px;border-radius:10px">${q.theme}</span></td>
+      <td style="padding:6px 8px;font-weight:800;font-size:13px;color:${col};text-align:center">${q.taux}%</td>
+      <td style="padding:6px 8px;text-align:center;white-space:nowrap;font-size:10.5px;color:${col};font-weight:700">${lbl}</td>
+    </tr>`;
+  }).join('');
+
+  // ── Listes points forts / axes
+  const fortsItems=themes.filter(t=>t.taux>=80)
+    .map(t=>`<li><strong>${t.theme}</strong> — ${t.taux}% de réussite</li>`).join('');
+  const axesItems=themes.filter(t=>t.taux<60)
+    .map(t=>`<li><strong>${t.theme}</strong> — ${t.taux}% · séance dédiée recommandée</li>`).join('');
+
+  const html=`<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"/>
+<title>${atelier||'Synthèse'} — ${partenaire||''}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-size:13px}
+@media print{
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .pb{page-break-before:always}
+  @page{margin:12mm 14mm;size:A4}
+}
+.hd{background:linear-gradient(120deg,#1e3a8a 0%,#2563eb 100%);color:#fff;padding:28px 36px 24px;margin-bottom:28px}
+.hd h1{font-size:24px;font-weight:900;margin-bottom:5px}
+.hd .meta{font-size:12px;color:#bfdbfe;margin-top:3px}
+.sec{padding:0 36px;margin-bottom:28px}
+.sec h2{font-size:15px;font-weight:800;color:#1e40af;margin-bottom:14px;padding-bottom:7px;border-bottom:2px solid #dbeafe;display:flex;align-items:center;gap:8px}
+.row3{display:grid;grid-template-columns:140px 1fr 140px;gap:20px;align-items:center}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 36px;margin-bottom:28px}
+.sc{border-radius:14px;padding:18px 14px;text-align:center;border:1px solid #e2e8f0}
+.sc .v{font-size:38px;font-weight:900;line-height:1}
+.sc .l{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-top:5px}
+table{width:100%;border-collapse:collapse}
+th{background:#1e3a8a;color:#fff;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;text-align:left;font-weight:700}
+td{border-bottom:1px solid #f1f5f9;vertical-align:middle}
+ul{padding-left:18px;line-height:1.8;font-size:12.5px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:11px}
+.leg{display:flex;align-items:center;gap:5px}
+.dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.ft{padding:16px 36px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center;margin-top:32px}
+</style></head><body>
+
+<div class="hd">
+  <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#93c5fd;margin-bottom:7px">Conseil Départemental du Lot-et-Garonne · MentiAnalyser</div>
+  <h1>${atelier||'Synthèse Atelier'}</h1>
+  <div class="meta">${partenaire||''}${niveauPublic?' · '+niveauPublic:''}${animateur?' · Animé par '+animateur:''} · ${today} · ${nb} participants · ${qs.length} questions</div>
+</div>
+
+<div class="stat-grid">
+  <div class="sc" style="background:${scoreBg};border-color:${scoreColor}44">
+    <div class="v" style="color:${scoreColor}">${score}%</div>
+    <div class="l">Score global</div>
+  </div>
+  <div class="sc" style="background:#f0fdf4;border-color:#86efac">
+    <div class="v" style="color:#22c55e">${acquis}</div>
+    <div class="l">✅ Acquis ≥80%</div>
+  </div>
+  <div class="sc" style="background:#fffbeb;border-color:#fcd34d">
+    <div class="v" style="color:#f59e0b">${fragiles}</div>
+    <div class="l">⚠️ Fragiles 60–79%</div>
+  </div>
+  <div class="sc" style="background:#fef2f2;border-color:#fca5a5">
+    <div class="v" style="color:#ef4444">${areinforcer}</div>
+    <div class="l">🔴 À renforcer &lt;60%</div>
+  </div>
+</div>
+
+<div class="sec">
+  <h2>📊 Résultats par thème</h2>
+  <div class="row3">
+    <svg width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">${pieSvg}</svg>
+    <svg width="100%" height="${svgH}" viewBox="0 0 ${LBL+MAX_BAR+VAL} ${svgH}" xmlns="http://www.w3.org/2000/svg">${themesBars}</svg>
+    <div>
+      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:#475569">Répartition</div>
+      <div style="height:18px;border-radius:9px;overflow:hidden;display:flex;margin-bottom:6px">${stackedBars}</div>
+      <div class="legend">
+        <div class="leg"><div class="dot" style="background:#22c55e"></div><span style="color:#16a34a;font-weight:600">${pA}% Acquis</span></div>
+        <div class="leg"><div class="dot" style="background:#f59e0b"></div><span style="color:#d97706;font-weight:600">${pF}% Fragile</span></div>
+        <div class="leg"><div class="dot" style="background:#ef4444"></div><span style="color:#dc2626;font-weight:600">${pR}% À renforcer</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+${(()=>{
+  // ── Radar SVG
+  const cx=220, cy=200, R=155, n=themes.length;
+  if(n<3) return '';
+  const angleOffset=-Math.PI/2;
+  const pt=(i,r)=>{
+    const a=angleOffset+(2*Math.PI*i/n);
+    return [cx+r*Math.cos(a), cy+r*Math.sin(a)];
+  };
+  // Grilles concentriques
+  const grids=[20,40,60,80,100].map(pct=>{
+    const r=R*pct/100;
+    const pts=themes.map((_,i)=>pt(i,r).join(',')).join(' ');
+    return `<polygon points="${pts}" fill="none" stroke="#e2e8f0" stroke-width="1"/>`;
+  }).join('');
+  // Axes
+  const axes=themes.map((_,i)=>{
+    const [x,y]=pt(i,R);
+    return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e2e8f0" stroke-width="1"/>`;
+  }).join('');
+  // Labels
+  const labels=themes.map((t,i)=>{
+    const [x,y]=pt(i,R+22);
+    const anchor=x<cx-5?'end':x>cx+5?'start':'middle';
+    return `<text x="${x}" y="${y+4}" text-anchor="${anchor}" font-size="10.5" fill="#475569" font-family="Segoe UI,Arial,sans-serif">${t.theme}</text>`;
+  }).join('');
+  // Données classe
+  const dataPts=themes.map((t,i)=>pt(i,R*t.taux/100).join(',')).join(' ');
+  // Cibles 100%
+  const fullPts=themes.map((_,i)=>pt(i,R).join(',')).join(' ');
+  // Valeurs sur axes
+  const vals=themes.map((t,i)=>{
+    const [x,y]=pt(i,R*t.taux/100);
+    const col=t.taux>=80?"#22c55e":t.taux>=60?"#f59e0b":"#ef4444";
+    return `<circle cx="${x}" cy="${y}" r="4" fill="${col}" stroke="#fff" stroke-width="1.5"/>`;
+  }).join('');
+  // Ticks % sur l'axe vertical
+  const ticks=[20,40,60,80,100].map(p=>{
+    const [x,y]=pt(0,R*p/100);
+    return `<text x="${x+5}" y="${y+3}" font-size="8" fill="#94a3b8" font-family="Arial">${p}%</text>`;
+  }).join('');
+  return `<div class="sec">
+  <h2>🕸 Vue radar — compétences par thème</h2>
+  <div style="display:flex;justify-content:center">
+  <svg width="440" height="400" viewBox="0 0 440 400" xmlns="http://www.w3.org/2000/svg">
+    ${grids}${axes}
+    <polygon points="${fullPts}" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <polygon points="${dataPts}" fill="rgba(59,130,246,0.15)" stroke="#2563eb" stroke-width="2.5"/>
+    ${vals}${labels}${ticks}
+    <rect x="20" y="370" width="12" height="12" rx="3" fill="rgba(59,130,246,0.25)" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="38" y="380" font-size="10" fill="#475569" font-family="Arial">Classe</text>
+    <line x1="80" y1="376" x2="92" y2="376" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="3 2"/>
+    <text x="98" y="380" font-size="10" fill="#475569" font-family="Arial">Objectif 100%</text>
+  </svg>
+  </div>
+</div>`;
+})()}
+
+${fortsItems?`<div class="sec">
+  <h2>✅ Points forts identifiés</h2>
+  <ul>${fortsItems}</ul>
+</div>`:''}
+
+${axesItems?`<div class="sec">
+  <h2>🔴 Axes de renforcement prioritaires</h2>
+  <ul>${axesItems}</ul>
+</div>`:''}
+
+<div class="sec pb">
+  <h2>📋 Détail par question <span style="font-size:11px;font-weight:400;color:#94a3b8">(tri par taux croissant)</span></h2>
+  <table>
+    <thead><tr>
+      <th>Question</th>
+      <th style="width:110px">Thème</th>
+      <th style="width:55px;text-align:center">Taux</th>
+      <th style="width:110px;text-align:center">Niveau</th>
+    </tr></thead>
+    <tbody>${qRows}</tbody>
+  </table>
+</div>
+
+<div class="ft" style="display:flex;justify-content:space-between;align-items:center">
+  <span>Document généré automatiquement — Atelier médiation numérique — Conseil Départemental du Lot-et-Garonne${niveauPublic?' · '+niveauPublic:''}</span>
+  <div style="text-align:center">
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`MentiAnalyser · ${atelier||'Atelier'} · ${partenaire||''} · Score: ${score}%`)}" width="80" height="80" style="border:2px solid #e2e8f0;border-radius:6px" onerror="this.style.display='none'"/>
+    <div style="font-size:8px;color:#94a3b8;margin-top:3px">Résumé session</div>
+  </div>
+</div>
+<scr'+'ipt>window.onload=()=>{ setTimeout(()=>window.print(),300); }</scr'+'ipt>
+</body></html>`;
+
+  const win = window.open('','_blank');
+  if (!win) { alert("Autorisez les popups pour cet outil."); return; }
+  win.document.write(html);
+  win.document.close();
 }
 
 // ── EXPORT B — SYNTHÈSE NARRATIVE RTF (statique, sans API) ───────────────────
-function exportSynthese(atelier, partenaire, animateur, participants, dateSession, apiKey) {
+function exportSynthese(atelier, partenaire, animateur, participants, dateSession, apiKey, qs=questions) {
   const today = dateSession || new Date().toLocaleDateString("fr-FR", {day:"2-digit",month:"long",year:"numeric"});
   const nb = participants || "?";
-  const score = globalScore();
-  const themes = byTheme();
+  const score = globalScore(qs);
+  const themes = byTheme(qs);
 
   const prompt = `Tu es conseiller numérique au Conseil Départemental du Lot-et-Garonne.
 Rédige une synthèse professionnelle pour la direction d'un établissement scolaire.
-Atelier : ${atelier} — ${partenaire} — ${today} — ${nb} participants — ${questions.length} questions.
+Atelier : ${atelier} — ${partenaire} — ${today} — ${nb} participants — ${qs.length} questions.
 ${animateur ? `Animé par : ${animateur}.` : ''}
 Score global : ${score}%
 Résultats par thème (du plus faible au plus fort) :
 ${themes.map(t=>`- ${t.theme} : ${t.taux}% (${t.correct}/${t.total})`).join('\n')}
 Points critiques (taux < 50%) :
-${questions.filter(q=>q.taux<50).map(q=>`- "${q.q}" : ${q.taux}%`).join('\n')}
+${qs.filter(q=>q.taux<50).map(q=>`- "${q.q}" : ${q.taux}%`).join('\n')}
 Très bien maîtrisés (taux = 100%) :
-${questions.filter(q=>q.taux===100).map(q=>`- "${q.q}"`).join('\n')}
+${qs.filter(q=>q.taux===100).map(q=>`- "${q.q}"`).join('\n')}
 Rédige en français une synthèse structurée avec sections numérotées :
 1. Contexte et objectifs
 2. Résultats globaux
@@ -353,7 +601,9 @@ ${rtfBody}
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href     = url;
-    a.download = "Synthese_narrative.rtf";
+    const safeName = (atelier || "Synthese").replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0,40);
+    const safePartner = (partenaire || "").replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0,30);
+    a.download = `Synthese_${safeName}${safePartner ? '_'+safePartner : ''}.rtf`;
     a.style.display = "none";
     document.body.appendChild(a);
     a.click();
@@ -393,30 +643,185 @@ function StatCard({ label, value, sub, accent }) {
   );
 }
 
+// ── EXTRACTION IMAGES DEPUIS ZIP ──────────────────────────────────────────────
+async function extractImagesFromZip(zipFile) {
+  const zip = await JSZip.loadAsync(zipFile);
+  const imageFiles = [];
+  const imageExts = /\.(png|jpe?g)$/i;
+  const promises = [];
+  zip.forEach((relativePath, entry) => {
+    if (!entry.dir && imageExts.test(relativePath)) {
+      promises.push(
+        entry.async("blob").then(blob => {
+          const ext = relativePath.split('.').pop().toLowerCase();
+          const mime = ext === "png" ? "image/png" : "image/jpeg";
+          return new File([blob], relativePath.split('/').pop(), { type: mime });
+        })
+      );
+    }
+  });
+  const extracted = await Promise.all(promises);
+  return extracted;
+}
+
+// ── ANALYSE PNG VIA API VISION ────────────────────────────────────────────────
+const THEMES_CONNUS = ["Vie privée","Sécurité","Arnaques","Algorithmes","Publications","Jeux & inconnus","Cyberharcèlement","Cookies","Vocabulaire"];
+const COUT_PAR_IMAGE = 0.0012; // € estimé par image (Haiku + vision)
+
+async function fetchAvecRetry(url, options, maxRetries=3) {
+  for (let attempt=1; attempt<=maxRetries; attempt++) {
+    const resp = await fetch(url, options);
+    if (resp.status === 429 || resp.status >= 500) {
+      if (attempt === maxRetries) throw new Error(`HTTP ${resp.status} après ${maxRetries} tentatives`);
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt-1)));
+      continue;
+    }
+    return resp;
+  }
+}
+
+async function analyserPNG(files, apiKey, setStatus, setProgress, setRetryInfo, setResults, setErrors, setQuestionsData) {
+  setStatus("loading");
+  setProgress(0);
+  setRetryInfo(null);
+  const results = [];
+  const errors  = [];
+
+  for (let i = 0; i < files.length; i++) {
+    try {
+      const b64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result.split(",")[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(files[i]);
+      });
+
+      const mediaType = files[i].type === "image/jpeg" ? "image/jpeg" : "image/png";
+
+      const body = JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 300,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
+            { type: "text", text: `C'est une capture d'écran d'un quiz Mentimeter. Extrais ces informations et réponds UNIQUEMENT en JSON valide, rien d'autre :
+{"q":"texte exact de la question","correct":nombre_bonnes_réponses,"total":nombre_total_réponses,"taux":pourcentage_entier,"theme":"Thème"}
+Pour le champ "theme", choisis le plus approprié parmi : ${THEMES_CONNUS.join(', ')}.
+Si aucun ne correspond, propose un thème court en français.
+Si tu ne vois pas de question claire, réponds : {"erreur":"non reconnu"}` }
+          ]
+        }]
+      });
+
+      let resp;
+      for (let attempt=1; attempt<=3; attempt++) {
+        if (attempt > 1) {
+          const delai = 1000 * Math.pow(2, attempt-2);
+          setRetryInfo(`Image ${i+1} — tentative ${attempt}/3 (attente ${delai/1000}s…)`);
+          await new Promise(r => setTimeout(r, delai));
+        }
+        resp = await fetch("https://api.anthropic.com/v1/messages", {
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json",
+            "x-api-key":apiKey,
+            "anthropic-version":"2023-06-01",
+            "anthropic-dangerous-direct-browser-access":"true",
+          },
+          body,
+        });
+        if (resp.status !== 429 && resp.status < 500) break;
+        if (attempt === 3) throw new Error(`HTTP ${resp.status} après 3 tentatives`);
+      }
+      setRetryInfo(null);
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error.message);
+
+      const raw   = data.content?.[0]?.text?.trim() || "";
+      const clean = raw.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(clean);
+
+      if (parsed.erreur) {
+        errors.push({ file: files[i].name, motif: parsed.erreur });
+      } else if (parsed.q) {
+        const correct = parseInt(parsed.correct) || 0;
+        const total   = parseInt(parsed.total)   || 0;
+        const taux    = total > 0 ? Math.round(correct / total * 100) : (parseInt(parsed.taux) || 0);
+        results.push({
+          id: results.length + 1,
+          theme: parsed.theme || "Général",
+          q: parsed.q,
+          correct, total, taux,
+        });
+      } else {
+        errors.push({ file: files[i].name, motif: "JSON incomplet" });
+      }
+    } catch(err) {
+      errors.push({ file: files[i].name, motif: err.message || "Erreur inconnue" });
+      console.warn(`Erreur image ${i+1}:`, err);
+    }
+
+    setProgress(i + 1);
+  }
+
+  setRetryInfo(null);
+  setErrors(errors);
+  if (results.length === 0) {
+    setStatus("error");
+  } else {
+    setResults(results);
+    setStatus("done");
+  }
+}
+
+
 // ── APP ───────────────────────────────────────────────────────────────────────
 function App() {
   const [activeTheme, setActiveTheme] = useState(null);
   const [tab,         setTab]         = useState("themes");
 
   // ── Champs de session éditables
-  const [atelier,      setAtelier]      = useState("Prudence sur Internet");
-  const [partenaire,   setPartenaire]   = useState("Collège — Classe 6D");
+  const [atelier,      setAtelier]      = useState("");
+  const [partenaire,   setPartenaire]   = useState("");
   const [animateur,    setAnimateur]    = useState("");
-  const [participants, setParticipants] = useState("23");
-  const [dateSession,  setDateSession]  = useState(
-    new Date().toLocaleDateString("fr-FR", {day:"2-digit", month:"long", year:"numeric"})
-  );
+  const [participants, setParticipants] = useState("");
+  const [dateSession,  setDateSession]  = useState("");
+  const [niveauPublic, setNiveauPublic] = useState("");
+  const [questionsData, setQuestionsData] = useState([]);
+
+  // ── Seuils personnalisables
+  const [seuilBas,   setSeuilBas]   = useState(60);
+  const [seuilHaut,  setSeuilHaut]  = useState(80);
+  const [showSeuils, setShowSeuils] = useState(false);
+  const gc = t => getColor(t, seuilBas, seuilHaut);
+  const gl = t => getLevel(t, seuilBas, seuilHaut);
+
   const [mdp,          setMdp]          = useState("");
   const [apiKey,       setApiKey]       = useState("");
   const [mdpStatus,    setMdpStatus]    = useState("idle");
   const [showMdp,      setShowMdp]      = useState(false);
+  const [showUpload,   setShowUpload]   = useState(false);
+  const [uploadFiles,  setUploadFiles]  = useState([]);
+  const [uploadStatus, setUploadStatus] = useState("idle");
+  const [uploadProgress,setUploadProgress] = useState(0);
+  const [uploadResults, setUploadResults]  = useState([]);
+  const [uploadErrors,  setUploadErrors]   = useState([]);
+  const [uploadRetryInfo, setUploadRetryInfo] = useState(null);
+  const [showReview,    setShowReview]     = useState(false);
+  const [dragging,      setDragging]       = useState(false);
+  const [editingId,     setEditingId]      = useState(null);
+  const [sessions,      setSessions]       = useState([]);
+  const [showCompare,   setShowCompare]    = useState(false);
 
-  const themes      = byTheme();
-  const score       = globalScore();
-  const acquis      = questions.filter(q => q.taux >= 80).length;
-  const fragiles    = questions.filter(q => q.taux >= 60 && q.taux < 80).length;
-  const areinforcer = questions.filter(q => q.taux <  60).length;
-  const filteredQ   = activeTheme ? questions.filter(q => q.theme === activeTheme) : [];
+  const themes      = byTheme(questionsData);
+  const score       = globalScore(questionsData);
+  const acquis      = questionsData.filter(q => q.taux >= seuilHaut).length;
+  const fragiles    = questionsData.filter(q => q.taux >= seuilBas && q.taux < seuilHaut).length;
+  const areinforcer = questionsData.filter(q => q.taux <  seuilBas).length;
+  const filteredQ   = activeTheme ? questionsData.filter(q => q.theme === activeTheme) : [];
   const radarData   = themes.map(t => ({
     subject: t.theme.length > 13 ? t.theme.slice(0,13)+"…" : t.theme,
     taux: t.taux, full: 100,
@@ -528,6 +933,16 @@ function App() {
             style:{...fieldStyle, minWidth:150, colorScheme:"dark"},
           })
         ),
+        // Niveau / public
+        e('div', null,
+          fieldLabel("Niveau / Public"),
+          e('input', {
+            type:"text", value:niveauPublic,
+            onChange: ev => setNiveauPublic(ev.target.value),
+            style:{...fieldStyle, minWidth:140},
+            placeholder:"Ex: CM2, 6e, adultes…",
+          })
+        ),
         // Mot de passe IA
         e('div', null,
           fieldLabel("🔑 Mot de passe IA"),
@@ -572,32 +987,300 @@ function App() {
         ),
       ),
       e('div', { style:{color:"#bfdbfe",fontSize:12,marginTop:2} },
-        `${questions.length} questions · 23 élèves · Cliquer pour modifier les champs`)
+        `${questionsData.length} questions · ${participants} élèves · Cliquer pour modifier les champs`)
     ),
     // Droite : boutons export
-    e('div', { style:{display:"flex",gap:10,flexWrap:"wrap",alignSelf:"center"} },
+    e('div', { style:{display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, alignSelf:"center", minWidth:400}, className:"no-print" },
       e('button', {
-        onClick: () => exportHTM(atelier, partenaire, animateur, participants, dateSession),
+        onClick: () => setShowUpload(true),
+        style:{ background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
+          padding:"10px 12px",fontWeight:700,fontSize:12,
+          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      }, "📤 Importer PNG/ZIP"),
+      e('button', {
+        onClick: () => exportJSON(atelier, partenaire, animateur, participants, dateSession, questionsData),
+        style:{ background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
+          padding:"10px 12px",fontWeight:700,fontSize:12,
+          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      }, "💾 Export JSON"),
+      e('button', {
+        onClick: () => {
+          const label = atelier + (partenaire ? ` · ${partenaire}` : '') + (dateSession ? ` (${dateSession})` : '');
+          setSessions(prev => [...prev, {
+            id: Date.now(), label,
+            atelier, partenaire, dateSession, participants,
+            questions: questionsData, score: globalScore(questionsData),
+            themes: byTheme(questionsData),
+          }]);
+          setShowCompare(true);
+        },
+        style:{ background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
+          padding:"10px 12px",fontWeight:700,fontSize:12,
+          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      }, sessions.length>0 ? `📊 Comparer (${sessions.length+1})` : "📌 Archiver"),
+      e('button', {
+        onClick: () => {
+          if (!confirm("Réinitialiser toutes les données et les champs ?")) return;
+          setAtelier(""); setPartenaire(""); setAnimateur(""); setParticipants("");
+          setDateSession(""); setNiveauPublic(""); setQuestionsData([]);
+          setActiveTheme(null); setTab("themes"); setSessions([]); setEditingId(null);
+        },
+        style:{ background:"rgba(239,68,68,0.25)",color:"#fecaca",border:"1px solid rgba(239,68,68,0.4)",borderRadius:10,
+          padding:"10px 12px",fontWeight:700,fontSize:12,
+          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      }, "🔄 Réinitialiser"),
+      e('button', {
+        onClick: () => document.getElementById('json-import-input').click(),
+        style:{ background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
+          padding:"10px 12px",fontWeight:700,fontSize:12,
+          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      }, "📂 Import JSON"),
+      e('button', {
+        onClick: () => exportCSV(atelier, partenaire, questionsData),
+        style:{ background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
+          padding:"10px 12px",fontWeight:700,fontSize:12,
+          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      }, "📥 Export CSV"),
+      e('button', {
+        onClick: () => setShowSeuils(s=>!s),
+        style:{ background:showSeuils?"rgba(255,255,255,0.3)":"rgba(255,255,255,0.15)",color:"#fff",
+          border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,
+          padding:"10px 12px",fontWeight:700,fontSize:12,
+          display:"flex",alignItems:"center",justifyContent:"center",gap:6 }
+      }, `⚙️ Seuils ${seuilBas}/${seuilHaut}`),
+      e('button', {
+        onClick: () => exportPDF(atelier, partenaire, animateur, participants, dateSession, questionsData, niveauPublic),
         style:{ background:"#fff",color:"#1e40af",border:"none",borderRadius:10,
-          padding:"10px 18px",fontWeight:700,fontSize:13,
-          display:"flex",alignItems:"center",gap:7,
+          padding:"10px 12px",fontWeight:700,fontSize:12,
+          display:"flex",alignItems:"center",justifyContent:"center",gap:6,
           boxShadow:"0 2px 10px rgba(0,0,0,0.18)" }
-      }, "📄 Export Word (RTF)"),
+      }, "📊 Export PDF"),
       e('button', {
-        onClick: () => exportSynthese(atelier, partenaire, animateur, participants, dateSession, apiKey),
+        onClick: () => exportSynthese(atelier, partenaire, animateur, participants, dateSession, apiKey, questionsData),
         disabled: !apiKey,
-        title: apiKey ? "" : "Entrez votre clé API pour activer",
+        title: apiKey ? "" : "Entrez votre mot de passe IA pour activer",
         style:{
           background: apiKey ? "#7c3aed" : "#94a3b8",
-          color:"#fff",
-          border:"none", borderRadius:10,
-          padding:"10px 18px", fontWeight:700, fontSize:13,
-          display:"flex", alignItems:"center", gap:7,
+          color:"#fff", border:"none", borderRadius:10,
+          padding:"10px 12px", fontWeight:700, fontSize:12,
+          display:"flex", alignItems:"center", justifyContent:"center", gap:6,
           boxShadow: apiKey ? "0 2px 10px rgba(0,0,0,0.2)" : "none",
           cursor: apiKey ? "pointer" : "not-allowed",
           transition:"background .2s",
         }
-      }, "📝 Export Synthèse (IA)")
+      }, "📝 Synthèse (IA)")
+    ),
+
+    // ── MODALE UPLOAD PNG — ANALYSE AUTOMATIQUE VIA API
+    showUpload && e('div', {
+      style:{
+        position:"fixed", inset:0, background:"rgba(0,0,0,0.6)",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        zIndex:1000, padding:20,
+      },
+      onClick: ev => { if(ev.target===ev.currentTarget && uploadStatus==="idle") setShowUpload(false); }
+    },
+      e('div', {
+        style:{
+          background:"#fff", borderRadius:20, padding:24,
+          maxWidth:460, width:"100%",
+          boxShadow:"0 20px 60px rgba(0,0,0,0.3)",
+        }
+      },
+        // Titre
+        e('div', { style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14} },
+          e('h2', { style:{fontSize:16,fontWeight:800,color:"#1e293b"} }, "📤 Importer PNG / ZIP Mentimeter"),
+          uploadStatus==="idle" && e('button', {
+            onClick: () => { setShowUpload(false); setUploadFiles([]); },
+            style:{ background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8" }
+          }, "✕")
+        ),
+
+        // Zone drop
+        uploadStatus==="idle" && e('div', {
+          style:{
+            border:`2px dashed ${dragging?"#1e40af":uploadFiles.length>0?"#1e40af":"#bfdbfe"}`,
+            borderRadius:12, padding:"22px 16px", textAlign:"center",
+            background: dragging?"#dbeafe":uploadFiles.length>0?"#eff6ff":"#f8faff",
+            marginBottom:14, cursor:"pointer",
+            transition:"background .15s, border-color .15s",
+          },
+          onClick: () => document.getElementById('png-input').click(),
+          onDragOver: ev => { ev.preventDefault(); setDragging(true); },
+          onDragEnter: ev => { ev.preventDefault(); setDragging(true); },
+          onDragLeave: () => setDragging(false),
+          onDrop: async ev => {
+            ev.preventDefault(); setDragging(false);
+            const rawFiles = Array.from(ev.dataTransfer.files || []);
+            const allImages = [];
+            for (const f of rawFiles) {
+              if (f.name.toLowerCase().endsWith('.zip') || f.type === 'application/zip' || f.type === 'application/x-zip-compressed') {
+                try { allImages.push(...(await extractImagesFromZip(f))); }
+                catch(err) { console.warn("Erreur extraction ZIP :", f.name, err); }
+              } else if (/image\/(png|jpe?g)/.test(f.type)) {
+                allImages.push(f);
+              }
+            }
+            if (allImages.length) setUploadFiles(allImages);
+          },
+        },
+          e('div', { style:{fontSize:28,marginBottom:6} }, dragging ? "📥" : "🖼📦"),
+          e('div', { style:{fontSize:13,fontWeight:700,color:"#1e40af",marginBottom:3} },
+            dragging
+              ? "Déposer ici…"
+              : uploadFiles.length > 0
+              ? `${uploadFiles.length} fichier(s) sélectionné(s)`
+              : "Glisser-déposer ou cliquer pour sélectionner"
+          ),
+          e('div', { style:{fontSize:11,color:"#94a3b8"} }, "PNG, JPEG individuels ou archive ZIP (sélection multiple)"),
+          e('input', {
+            id:"png-input", type:"file",
+            accept:"image/png,image/jpeg,.zip,application/zip,application/x-zip-compressed",
+            multiple:true,
+            style:{display:"none"},
+            onChange: async ev => {
+              const rawFiles = Array.from(ev.target.files || []);
+              const allImages = [];
+              for (const f of rawFiles) {
+                if (f.name.toLowerCase().endsWith('.zip') || f.type === 'application/zip' || f.type === 'application/x-zip-compressed') {
+                  try {
+                    const extracted = await extractImagesFromZip(f);
+                    allImages.push(...extracted);
+                  } catch(err) {
+                    console.warn("Erreur extraction ZIP :", f.name, err);
+                  }
+                } else {
+                  allImages.push(f);
+                }
+              }
+              setUploadFiles(allImages);
+            }
+          })
+        ),
+
+        // Miniatures
+        uploadStatus==="idle" && uploadFiles.length>0 && e('div', {
+          style:{marginBottom:14}
+        },
+          e('div',{style:{fontSize:11,color:"#64748b",marginBottom:6,fontWeight:600}},
+            `${uploadFiles.length} image(s) prête(s)`),
+          e('div',{style:{
+            display:"grid",
+            gridTemplateColumns:"repeat(auto-fill,minmax(72px,1fr))",
+            gap:6, maxHeight:160, overflowY:"auto",
+          }},
+            ...uploadFiles.map((f,i) =>
+              e('div',{key:i,style:{position:"relative",borderRadius:8,overflow:"hidden",
+                border:"1px solid #e2e8f0",aspectRatio:"1",background:"#f8fafc"}},
+                e('img',{
+                  src: URL.createObjectURL(f),
+                  alt: f.name,
+                  style:{width:"100%",height:"100%",objectFit:"cover",display:"block"},
+                  onLoad: ev => URL.revokeObjectURL(ev.target.src),
+                }),
+                e('div',{style:{
+                  position:"absolute",bottom:0,left:0,right:0,
+                  background:"rgba(0,0,0,0.55)",color:"#fff",
+                  fontSize:8,padding:"2px 4px",
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                }}, f.name)
+              )
+            )
+          )
+        ),
+
+        // Estimation coût
+        uploadStatus==="idle" && uploadFiles.length>0 && apiKey && e('div',{
+          style:{background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:10,
+            padding:"8px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:8}
+        },
+          e('span',{style:{fontSize:12,color:"#0369a1"}},"💡"),
+          e('span',{style:{fontSize:12,color:"#0369a1"}},
+            `Estimation : ${uploadFiles.length} appels API · ~${(uploadFiles.length*COUT_PAR_IMAGE).toFixed(3)}€`)
+        ),
+
+        // Avertissement clé manquante
+        uploadStatus==="idle" && !apiKey && e('div', {
+          style:{background:"#fef3c7",border:"1px solid #fcd34d",borderRadius:10,padding:"10px 12px",marginBottom:14}
+        },
+          e('p',{style:{fontSize:12,color:"#92400e",fontWeight:600}},
+            "⚠️ Entrez votre mot de passe IA dans le header pour activer l'analyse automatique.")
+        ),
+
+        // Barre de progression
+        uploadStatus==="loading" && e('div', { style:{textAlign:"center",padding:"20px 0"} },
+          e('div', { style:{fontSize:13,fontWeight:700,color:"#1e40af",marginBottom:6} },
+            `⏳ Analyse en cours… ${uploadProgress}/${uploadFiles.length} images`
+          ),
+          uploadRetryInfo && e('div',{style:{fontSize:11,color:"#d97706",marginBottom:8,fontStyle:"italic"}},
+            `🔄 ${uploadRetryInfo}`),
+          e('div', { style:{background:"#e2e8f0",borderRadius:99,height:8,overflow:"hidden"} },
+            e('div', { style:{
+              width:`${uploadFiles.length>0?Math.round(uploadProgress/uploadFiles.length*100):0}%`,
+              height:"100%", background:"#1e40af", borderRadius:99,
+              transition:"width .3s",
+            }})
+          )
+        ),
+
+        // Résultat
+        uploadStatus==="done" && e('div', {
+          style:{background:"#f0fdf4",border:"1px solid #86efac",borderRadius:12,padding:"14px 16px",marginBottom:14}
+        },
+          e('p',{style:{fontSize:14,fontWeight:800,color:"#166534",marginBottom:6}},
+            `✅ ${uploadResults.length} question(s) analysée(s)`),
+          e('div',{style:{maxHeight:140,overflowY:"auto"}},
+            ...uploadResults.map((r,i)=>
+              e('div',{key:i,style:{fontSize:11,color:"#166534",padding:"2px 0",borderBottom:"1px solid #dcfce7"}},
+                `${r.q.slice(0,45)}… → ${r.correct}/${r.total} (${r.taux}%)`
+              )
+            )
+          )
+        ),
+
+        uploadStatus==="error" && e('div',{
+          style:{background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:10,padding:"10px 12px",marginBottom:14}
+        },
+          e('p',{style:{fontSize:12,color:"#dc2626",fontWeight:600}}, "❌ Erreur d'analyse — vérifiez votre clé API")
+        ),
+
+        // Rapport d'erreurs par image
+        uploadStatus==="done" && uploadErrors.length>0 && e('div',{
+          style:{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:10,padding:"10px 12px",marginBottom:14}
+        },
+          e('p',{style:{fontSize:12,color:"#c2410c",fontWeight:700,marginBottom:5}},
+            `⚠️ ${uploadErrors.length} image(s) non reconnue(s)`),
+          e('div',{style:{maxHeight:80,overflowY:"auto"}},
+            ...uploadErrors.map((er,i)=>
+              e('div',{key:i,style:{fontSize:10,color:"#9a3412",padding:"2px 0",borderBottom:"1px solid #fed7aa",display:"flex",gap:8}},
+                e('span',{style:{fontWeight:600,flexShrink:0}}, er.file.length>28 ? er.file.slice(0,25)+'…' : er.file),
+                e('span',{style:{color:"#b45309"}}, er.motif)
+              )
+            )
+          )
+        ),
+
+        // Boutons action
+        e('div', { style:{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4} },
+          e('button', {
+            onClick: () => { setShowUpload(false); setUploadFiles([]); setUploadStatus("idle"); setUploadResults([]); setUploadErrors([]); setUploadProgress(0); },
+            style:{ background:"#f1f5f9",border:"none",borderRadius:10,
+              padding:"9px 16px",fontWeight:600,fontSize:13,cursor:"pointer",color:"#475569" }
+          }, uploadStatus==="done" ? "Fermer" : "Annuler"),
+
+          uploadStatus==="idle" && uploadFiles.length>0 && apiKey && e('button', {
+            onClick: () => analyserPNG(uploadFiles, apiKey, setUploadStatus, setUploadProgress, setUploadRetryInfo, setUploadResults, setUploadErrors, setQuestionsData),
+            style:{ background:"#1e40af",border:"none",borderRadius:10,
+              padding:"9px 16px",fontWeight:700,fontSize:13,cursor:"pointer",color:"#fff" }
+          }, `Analyser ${uploadFiles.length} image(s) →`),
+
+          uploadStatus==="done" && e('button', {
+            onClick: () => { setShowReview(true); },
+            style:{ background:"#16a34a",border:"none",borderRadius:10,
+              padding:"9px 16px",fontWeight:700,fontSize:13,cursor:"pointer",color:"#fff" }
+          }, "🔍 Vérifier et appliquer")
+        )
+      )
     )
   );
 
@@ -606,9 +1289,9 @@ function App() {
     display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(165px,1fr))",
     gap:12, marginBottom:24,
   }},
-    e(StatCard,{label:"Score global",  value:`${score}%`,  sub:"moyenne de la classe",                              accent:getColor(score)}),
-    e(StatCard,{label:"Acquis",         value:acquis,        sub:`≥ 80% · ${Math.round(acquis/questions.length*100)}% des questions`, accent:"#22c55e"}),
-    e(StatCard,{label:"Fragiles",       value:fragiles,      sub:"60–79% de réussite",                               accent:"#f59e0b"}),
+    e(StatCard,{label:"Score global",  value:`${score}%`,  sub:"moyenne de la classe",                              accent:gc(score)}),
+    e(StatCard,{label:"Acquis",         value:acquis,        sub:`≥ ${seuilHaut}% · ${questionsData.length>0?Math.round(acquis/questionsData.length*100):0}% des questions`, accent:"#22c55e"}),
+    e(StatCard,{label:"Fragiles",       value:fragiles,      sub:`${seuilBas}–${seuilHaut-1}% de réussite`,                               accent:"#f59e0b"}),
     e(StatCard,{label:"À renforcer",    value:areinforcer,   sub:"< 60% de réussite",                                accent:"#ef4444"}),
     e(StatCard,{label:"Thèmes",         value:themes.length, sub:"domaines évalués",                                 accent:"#6366f1"}),
   );
@@ -652,7 +1335,7 @@ function App() {
           e(Bar,{dataKey:"taux",name:"Réussite",radius:[0,6,6,0]},
             ...themes.map((t,i) => e(Cell,{
               key:i,
-              fill: activeTheme===t.theme ? "#1e40af" : getColor(t.taux),
+              fill: activeTheme===t.theme ? "#1e40af" : gc(t.taux),
               opacity: activeTheme && activeTheme!==t.theme ? 0.3 : 1,
               style:{cursor:"pointer"},
             }))
@@ -686,7 +1369,7 @@ function App() {
             },
               e('td',{style:{padding:"8px 10px",fontSize:13,fontWeight:600,color:activeTheme===t.theme?"#1e40af":"#1e293b"}},t.theme),
               e('td',{style:{padding:"8px 10px",fontSize:12,color:"#475569"}},`${t.correct}/${t.total}`),
-              e('td',{style:{padding:"8px 10px",fontSize:14,fontWeight:800,color:getColor(t.taux)}},`${t.taux}%`),
+              e('td',{style:{padding:"8px 10px",fontSize:14,fontWeight:800,color:gc(t.taux)}},`${t.taux}%`),
               e('td',{style:{padding:"8px 10px"}},e(Badge,{taux:t.taux}))
             )
           )
@@ -710,7 +1393,7 @@ function App() {
             e('span',{style:{fontSize:13,flex:1}},q.q),
             e('div',{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
               e('span',{style:{fontSize:12,color:"#64748b"}},`${q.correct}/${q.total}`),
-              e('span',{style:{fontSize:14,fontWeight:800,color:getColor(q.taux),minWidth:36,textAlign:"right"}},`${q.taux}%`),
+              e('span',{style:{fontSize:14,fontWeight:800,color:gc(q.taux),minWidth:36,textAlign:"right"}},`${q.taux}%`),
               e(Badge,{taux:q.taux})
             )
           )
@@ -720,27 +1403,102 @@ function App() {
   );
 
   // ── VUE QUESTIONS
+  const inputEd = (val, onChange, opts={}) => e('input',{
+    value:val, onChange, ...opts,
+    style:{border:"1px solid #bfdbfe",borderRadius:6,padding:"3px 7px",
+      fontSize:12,fontFamily:"inherit",outline:"none",background:"#fff",...(opts.style||{})}
+  });
+
+  const updateQ = (id, patch) =>
+    setQuestionsData(prev => prev.map(q => q.id===id ? {...q,...patch,
+      taux: patch.correct!==undefined || patch.total!==undefined
+        ? Math.round(((patch.correct??q.correct)/Math.max(patch.total??q.total,1))*100)
+        : (patch.taux??q.taux)
+    } : q));
+
+  const deleteQ = id => {
+    if (!confirm("Supprimer cette question ?")) return;
+    setQuestionsData(prev => prev.filter(q => q.id!==id));
+    if (editingId===id) setEditingId(null);
+  };
+
+  const addQ = () => {
+    const newId = Date.now();
+    setQuestionsData(prev => [...prev, {id:newId,theme:"Général",q:"Nouvelle question",correct:0,total:0,taux:0}]);
+    setEditingId(newId);
+  };
+
   const vueQuestions = panel([
-    e('h2',{style:{margin:"0 0 16px",fontSize:14,fontWeight:700}},"Toutes les questions — tri par taux croissant"),
+    e('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
+      e('h2',{style:{margin:0,fontSize:14,fontWeight:700}},"Toutes les questions — tri par taux croissant"),
+      e('button',{onClick:addQ,style:{
+        background:"#1e40af",color:"#fff",border:"none",borderRadius:8,
+        padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",
+        display:"flex",alignItems:"center",gap:5,
+      }},"＋ Ajouter")
+    ),
     e('div',{style:{display:"grid",gap:4}},
-      ...[...questions].sort((a,b)=>a.taux-b.taux).map(q =>
-        e('div',{key:q.id,style:{
-          display:"grid",gridTemplateColumns:"1fr 130px 90px 130px",
-          alignItems:"center",gap:10,
-          padding:"9px 12px",borderRadius:10,
-          background:"#fafafa",border:"1px solid #f1f5f9",
+      ...[...questionsData].sort((a,b)=>a.taux-b.taux).map(q => {
+        const isEditing = editingId === q.id;
+        return e('div',{key:q.id,style:{
+          borderRadius:10, border:`1px solid ${isEditing?"#bfdbfe":"#f1f5f9"}`,
+          background: isEditing?"#eff6ff":"#fafafa",
+          padding:"8px 12px", transition:"background .1s",
         }},
-          e('div',{style:{fontSize:13}},q.q),
-          e('span',{style:{fontSize:11,fontWeight:600,color:"#6366f1",background:"#eef2ff",borderRadius:6,padding:"2px 8px",textAlign:"center"}},q.theme),
-          e('div',{style:{display:"flex",alignItems:"center",gap:6}},
-            e('div',{style:{flex:1,background:"#e2e8f0",borderRadius:4,height:6,overflow:"hidden"}},
-              e('div',{style:{width:`${q.taux}%`,height:"100%",background:getColor(q.taux),borderRadius:4}})
-            ),
-            e('span',{style:{fontSize:13,fontWeight:800,color:getColor(q.taux),minWidth:34}},`${q.taux}%`)
-          ),
-          e(Badge,{taux:q.taux})
-        )
-      )
+          isEditing
+          // ── Mode édition
+          ? e('div',{style:{display:"grid",gap:7}},
+              inputEd(q.q, ev=>updateQ(q.id,{q:ev.target.value}),
+                {placeholder:"Question",style:{width:"100%",fontSize:13}}),
+              e('div',{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
+                e('label',{style:{fontSize:11,color:"#64748b"}},"Thème"),
+                inputEd(q.theme, ev=>updateQ(q.id,{theme:ev.target.value}),
+                  {placeholder:"Thème",style:{width:140}}),
+                e('label',{style:{fontSize:11,color:"#64748b"}},"Bonnes rép."),
+                inputEd(String(q.correct), ev=>updateQ(q.id,{correct:parseInt(ev.target.value)||0}),
+                  {type:"number",min:"0",style:{width:64}}),
+                e('label',{style:{fontSize:11,color:"#64748b"}},"/ Total"),
+                inputEd(String(q.total), ev=>updateQ(q.id,{total:parseInt(ev.target.value)||0}),
+                  {type:"number",min:"0",style:{width:64}}),
+                e('span',{style:{fontSize:13,fontWeight:800,color:gc(q.taux),minWidth:36}},`${q.taux}%`),
+              ),
+              e('div',{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
+                e('button',{onClick:()=>deleteQ(q.id),style:{
+                  background:"#fef2f2",color:"#dc2626",border:"1px solid #fca5a5",
+                  borderRadius:7,padding:"4px 12px",fontSize:12,fontWeight:600,cursor:"pointer"
+                }},"🗑 Supprimer"),
+                e('button',{onClick:()=>setEditingId(null),style:{
+                  background:"#1e40af",color:"#fff",border:"none",
+                  borderRadius:7,padding:"4px 14px",fontSize:12,fontWeight:700,cursor:"pointer"
+                }},"✓ OK"),
+              )
+            )
+          // ── Mode lecture
+          : e('div',{
+              style:{display:"grid",gridTemplateColumns:"1fr 130px 90px 110px 32px",
+                alignItems:"center",gap:10,cursor:"pointer"},
+              onClick:()=>setEditingId(q.id),
+              title:"Cliquer pour modifier",
+            },
+              e('div',{style:{fontSize:13}},q.q),
+              e('span',{style:{fontSize:11,fontWeight:600,color:"#6366f1",background:"#eef2ff",
+                borderRadius:6,padding:"2px 8px",textAlign:"center"}},q.theme),
+              e('div',{style:{display:"flex",alignItems:"center",gap:6}},
+                e('div',{style:{flex:1,background:"#e2e8f0",borderRadius:4,height:6,overflow:"hidden"}},
+                  e('div',{style:{width:`${q.taux}%`,height:"100%",background:gc(q.taux),borderRadius:4}})
+                ),
+                e('span',{style:{fontSize:13,fontWeight:800,color:gc(q.taux),minWidth:34}},`${q.taux}%`)
+              ),
+              e(Badge,{taux:q.taux}),
+              e('button',{
+                onClick:ev=>{ev.stopPropagation();deleteQ(q.id);},
+                style:{background:"none",border:"none",color:"#cbd5e1",fontSize:16,
+                  cursor:"pointer",padding:0,lineHeight:1},
+                title:"Supprimer"
+              },"✕")
+            )
+        );
+      })
     )
   ]);
 
@@ -761,7 +1519,11 @@ function App() {
 
   // ── LÉGENDE
   const legende = e('div',{style:{display:"flex",gap:10,marginTop:20,flexWrap:"wrap"}},
-    ...([["#16a34a","#f0fdf4","✅ Acquis","≥ 80%"],["#d97706","#fffbeb","⚠️ Fragile","60–79%"],["#dc2626","#fef2f2","🔴 À renforcer","< 60%"]]).map(([c,bg,l,s]) =>
+    ...([
+      ["#16a34a","#f0fdf4",`✅ Acquis`,`≥ ${seuilHaut}%`],
+      ["#d97706","#fffbeb",`⚠️ Fragile`,`${seuilBas}–${seuilHaut-1}%`],
+      ["#dc2626","#fef2f2",`🔴 À renforcer`,`< ${seuilBas}%`]
+    ]).map(([c,bg,l,s]) =>
       e('div',{key:l,style:{background:bg,border:`1px solid ${c}33`,borderRadius:10,padding:"6px 14px",fontSize:12,color:c,fontWeight:600}},
         l, e('span',{style:{fontWeight:400,color:"#64748b"}},` — ${s}`)
       )
@@ -769,7 +1531,207 @@ function App() {
   );
 
   return e('div',{style:{minHeight:"100vh"}},
+    // Input caché pour import JSON
+    e('input',{
+      id:"json-import-input", type:"file", accept:".json,application/json",
+      style:{display:"none"},
+      onChange: ev => {
+        const f = ev.target.files?.[0];
+        if (!f) return;
+        importJSON(f, {
+          onSuccess: data => {
+            if (data.atelier)      setAtelier(data.atelier);
+            if (data.partenaire)   setPartenaire(data.partenaire);
+            if (data.animateur)    setAnimateur(data.animateur);
+            if (data.participants) setParticipants(data.participants);
+            if (data.dateSession)  setDateSession(data.dateSession);
+            setQuestionsData(data.questions);
+            ev.target.value = "";
+          }
+        });
+      }
+    }),
     header,
+
+    // ── Panneau seuils personnalisables
+    showSeuils && e('div',{style:{
+      background:"#1e3a8a",borderBottom:"2px solid #3b82f6",
+      padding:"12px 24px",display:"flex",alignItems:"center",gap:20,flexWrap:"wrap",
+    }},
+      e('span',{style:{fontSize:12,color:"#93c5fd",fontWeight:700}},"⚙️ Seuils de niveau"),
+      e('div',{style:{display:"flex",alignItems:"center",gap:8}},
+        e('span',{style:{fontSize:11,color:"#fca5a5"}},"🔴 À renforcer < "),
+        e('input',{type:"number",min:1,max:seuilHaut-1,value:seuilBas,
+          onChange:ev=>setSeuilBas(Math.min(Number(ev.target.value),seuilHaut-1)),
+          style:{width:56,padding:"3px 7px",borderRadius:6,border:"1px solid #3b82f6",
+            background:"rgba(255,255,255,0.1)",color:"#fff",fontSize:13,fontWeight:700}}),
+        e('span',{style:{fontSize:11,color:"#fde68a"}},"% ⚠️ Fragile < "),
+        e('input',{type:"number",min:seuilBas+1,max:99,value:seuilHaut,
+          onChange:ev=>setSeuilHaut(Math.max(Number(ev.target.value),seuilBas+1)),
+          style:{width:56,padding:"3px 7px",borderRadius:6,border:"1px solid #3b82f6",
+            background:"rgba(255,255,255,0.1)",color:"#fff",fontSize:13,fontWeight:700}}),
+        e('span',{style:{fontSize:11,color:"#86efac"}},"% ✅ Acquis")
+      ),
+      e('button',{onClick:()=>{setSeuilBas(60);setSeuilHaut(80);},
+        style:{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",
+          borderRadius:7,color:"#93c5fd",fontSize:11,padding:"4px 10px",cursor:"pointer"}
+      },"Réinitialiser")
+    ),
+
+    // ── Modale review avant application
+    showReview && uploadResults.length>0 && e('div',{
+      style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",
+        display:"flex",alignItems:"flex-start",justifyContent:"center",
+        zIndex:1000,padding:"24px 16px",overflowY:"auto"},
+      onClick: ev => { if(ev.target===ev.currentTarget) setShowReview(false); }
+    },
+      e('div',{style:{background:"#fff",borderRadius:20,padding:24,
+        width:"100%",maxWidth:760,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}},
+        e('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+          e('h2',{style:{fontSize:15,fontWeight:800,color:"#1e293b"}},
+            `🔍 Vérification — ${uploadResults.length} question(s) analysée(s)`),
+          e('button',{onClick:()=>setShowReview(false),
+            style:{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8"}},"✕")
+        ),
+        e('div',{style:{maxHeight:400,overflowY:"auto",display:"grid",gap:6,marginBottom:16}},
+          ...uploadResults.map((r,i)=>{
+            const col=gc(r.taux);
+            return e('div',{key:i,style:{
+              display:"grid",gridTemplateColumns:"1fr 110px 60px 90px",
+              alignItems:"center",gap:8,padding:"8px 10px",
+              borderRadius:8,background:i%2===0?"#f8fafc":"#fff",
+              border:"1px solid #f1f5f9",
+            }},
+              e('span',{style:{fontSize:12}},r.q),
+              e('span',{style:{fontSize:10,color:"#6366f1",background:"#eef2ff",
+                borderRadius:5,padding:"2px 7px",textAlign:"center"}},r.theme),
+              e('span',{style:{fontSize:13,fontWeight:800,color:col,textAlign:"center"}},`${r.taux}%`),
+              e('span',{style:{fontSize:10,color:col,fontWeight:600}},gl(r.taux).icon+' '+gl(r.taux).label)
+            );
+          })
+        ),
+        uploadErrors.length>0 && e('div',{style:{background:"#fff7ed",border:"1px solid #fed7aa",
+          borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:11,color:"#9a3412"}},
+          `⚠️ ${uploadErrors.length} image(s) ignorée(s) : `+uploadErrors.map(e=>e.file).join(', ')
+        ),
+        e('div',{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
+          e('button',{onClick:()=>setShowReview(false),
+            style:{background:"#f1f5f9",border:"none",borderRadius:10,
+              padding:"9px 18px",fontWeight:600,fontSize:13,cursor:"pointer",color:"#475569"}
+          },"Annuler"),
+          e('button',{
+            onClick:()=>{
+              setQuestionsData(uploadResults);
+              setShowReview(false); setShowUpload(false);
+              setUploadStatus("idle"); setUploadFiles([]); setUploadResults([]); setUploadErrors([]); setUploadProgress(0);
+            },
+            style:{background:"#16a34a",border:"none",borderRadius:10,
+              padding:"9px 18px",fontWeight:700,fontSize:13,cursor:"pointer",color:"#fff"}
+          },"✅ Appliquer les données")
+        )
+      )
+    ),
+    showCompare && sessions.length > 0 && e('div',{
+      style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",
+        display:"flex",alignItems:"flex-start",justifyContent:"center",
+        zIndex:1000,padding:"24px 16px",overflowY:"auto"},
+      onClick: ev => { if(ev.target===ev.currentTarget) setShowCompare(false); }
+    },
+      e('div',{style:{background:"#fff",borderRadius:20,padding:24,
+        width:"100%",maxWidth:900,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}},
+        e('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}},
+          e('h2',{style:{fontSize:16,fontWeight:800,color:"#1e293b"}},
+            `📊 Comparaison — ${sessions.length+1} session(s)`),
+          e('div',{style:{display:"flex",gap:8}},
+            e('button',{
+              onClick:()=>{
+                // Ajouter session courante si pas encore dans la liste
+                setSessions(prev=>[...prev,{
+                  id:Date.now(),
+                  label:atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:''),
+                  atelier,partenaire,dateSession,participants,
+                  questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData),
+                }]);
+              },
+              style:{background:"#1e40af",color:"#fff",border:"none",borderRadius:8,
+                padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}
+            },"＋ Ajouter session courante"),
+            e('button',{onClick:()=>setShowCompare(false),
+              style:{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8"}},"✕")
+          )
+        ),
+        // Scores globaux
+        e('div',{style:{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}},
+          ...[...sessions,{
+            id:"current",label:atelier+(partenaire?` · ${partenaire}`:''),
+            score:globalScore(questionsData),questions:questionsData,themes:byTheme(questionsData),
+          }].map((s,si)=>{
+            const col=gc(s.score);
+            return e('div',{key:s.id,style:{
+              flex:1,minWidth:150,background:"#f8fafc",border:`2px solid ${col}33`,
+              borderRadius:14,padding:"14px 16px",textAlign:"center",position:"relative",
+            }},
+              si<sessions.length && e('button',{
+                onClick:()=>setSessions(prev=>prev.filter(x=>x.id!==s.id)),
+                style:{position:"absolute",top:6,right:8,background:"none",border:"none",
+                  color:"#cbd5e1",fontSize:14,cursor:"pointer",lineHeight:1}
+              },"✕"),
+              e('div',{style:{fontSize:10,color:"#64748b",textTransform:"uppercase",
+                letterSpacing:1,marginBottom:6,fontWeight:600}},s.label),
+              e('div',{style:{fontSize:36,fontWeight:900,color:col,lineHeight:1}},`${s.score}%`),
+              e('div',{style:{fontSize:10,color:"#94a3b8",marginTop:4}},
+                `${s.questions.length} questions`)
+            );
+          })
+        ),
+        // Barres comparatives par thème
+        e('div',{style:{overflowX:"auto"}},
+          (() => {
+            const allSessions=[...sessions,{
+              id:"current",label:atelier,score:globalScore(questionsData),
+              questions:questionsData,themes:byTheme(questionsData),
+            }];
+            const allThemes=[...new Set(allSessions.flatMap(s=>s.themes.map(t=>t.theme)))].sort();
+            const COLORS=["#2563eb","#16a34a","#d97706","#dc2626","#7c3aed","#0891b2"];
+            return e('div',{style:{display:"grid",gap:6}},
+              allThemes.map(theme=>
+                e('div',{key:theme,style:{display:"grid",
+                  gridTemplateColumns:`140px repeat(${allSessions.length},1fr)`,
+                  alignItems:"center",gap:6}},
+                  e('span',{style:{fontSize:11,color:"#475569",fontWeight:600,
+                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},theme),
+                  ...allSessions.map((s,si)=>{
+                    const t=s.themes.find(x=>x.theme===theme);
+                    const pct=t?t.taux:0;
+                    return e('div',{key:s.id,style:{position:"relative",background:"#f1f5f9",
+                      borderRadius:6,height:22,overflow:"hidden"}},
+                      e('div',{style:{width:`${pct}%`,height:"100%",
+                        background:COLORS[si%COLORS.length],borderRadius:6,
+                        transition:"width .3s",opacity:0.85}}),
+                      e('span',{style:{position:"absolute",right:5,top:"50%",
+                        transform:"translateY(-50%)",fontSize:10,fontWeight:700,
+                        color:pct>30?"#fff":"#475569"}},pct?`${pct}%`:"—")
+                    );
+                  })
+                )
+              )
+            );
+          })()
+        ),
+        // Légende sessions
+        e('div',{style:{display:"flex",gap:12,flexWrap:"wrap",marginTop:14}},
+          ...[...sessions,{id:"current",label:atelier+(partenaire?` · ${partenaire}`:'')}]
+            .map((s,si)=>{
+              const COLORS=["#2563eb","#16a34a","#d97706","#dc2626","#7c3aed","#0891b2"];
+              return e('div',{key:s.id,style:{display:"flex",alignItems:"center",gap:5,fontSize:11}},
+                e('div',{style:{width:12,height:12,borderRadius:3,background:COLORS[si%COLORS.length],flexShrink:0}}),
+                e('span',{style:{color:"#475569"}},s.label+(s.id==="current"?" (courante)":""))
+              );
+            })
+        )
+      )
+    ),
+
     e('div',{style:{padding:"28px 32px",maxWidth:1200,margin:"0 auto"}},
       statCards, tabs,
       tab==="themes"    ? vueThemes    :
