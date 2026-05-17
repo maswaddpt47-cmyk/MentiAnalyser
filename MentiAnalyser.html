@@ -225,8 +225,8 @@ function rtfRow(cells, widths, isHeader=false) {
 const LS_KEY = "mentianalyser_session";
 
 // ── EXPORT JSON ───────────────────────────────────────────────────────────────
-function exportJSON(atelier, partenaire, animateur, participants, dateSession, qs) {
-  const payload = { atelier, partenaire, animateur, participants, dateSession, questions: qs,
+function exportJSON(atelier, partenaire, animateur, participants, dateSession, qs, niveauPublic="") {
+  const payload = { atelier, partenaire, animateur, participants, dateSession, niveauPublic, questions: qs,
     _version: 1, _exportedAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
   const url  = URL.createObjectURL(blob);
@@ -380,6 +380,17 @@ async function exportPPTX(atelier, partenaire, animateur, participants, dateSess
 // ── EXPORT PDF AVEC SYNTHÈSE IA ───────────────────────────────────────────────
 async function exportPDFAvecIA(atelier, partenaire, animateur, participants, dateSession, niveauPublic, qs, apiKey) {
   if (!apiKey) { alert("Clé API requise pour la synthèse IA."); return; }
+
+  // Ouvrir la fenêtre AVANT le await — seul moyen d'éviter le blocage popup navigateur
+  const win = window.open('', '_blank');
+  if (!win) { alert("Autorisez les popups pour cet outil."); return; }
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Génération en cours…</title>
+    <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f8fafc;flex-direction:column;gap:16px}
+    .spin{width:48px;height:48px;border:4px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:s 0.8s linear infinite}
+    @keyframes s{to{transform:rotate(360deg)}}</style></head>
+    <body><div class="spin"></div><p style="color:#64748b;font-size:14px">Génération de la synthèse IA…</p></body></html>`);
+  win.document.close();
+
   const score  = globalScore(qs);
   const themes = byTheme(qs);
   const today  = dateSession || new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
@@ -407,10 +418,13 @@ Ton sobre et institutionnel. Environ 400 mots. Pas de markdown. Texte pur avec t
     });
     const data = await resp.json();
     if (!data.error) narratif = data.content?.map(b=>b.text||'').join('\n').trim() || "";
-  } catch(e) { console.warn("IA indisponible:", e); }
+  } catch(e) {
+    console.warn("IA indisponible:", e);
+    narratif = "";
+  }
 
-  // Appeler exportPDF normal en passant le texte narratif
-  exportPDF(atelier, partenaire, animateur, participants, dateSession, qs, niveauPublic, narratif);
+  // Générer le HTML du PDF dans la fenêtre déjà ouverte
+  exportPDF(atelier, partenaire, animateur, participants, dateSession, qs, niveauPublic, narratif, win);
 }
 
 // ── EXPORT CSV ────────────────────────────────────────────────────────────────
@@ -434,7 +448,7 @@ function exportCSV(atelier, partenaire, qs=questions) {
 }
 
 // ── EXPORT A — HTML avec graphiques SVG → impression PDF ─────────────────────
-function exportPDF(atelier, partenaire, animateur, participants, dateSession, qs=[], niveauPublic="", narratif="") {
+function exportPDF(atelier, partenaire, animateur, participants, dateSession, qs=[], niveauPublic="", narratif="", existingWin=null) {
   const themes = byTheme(qs), score = globalScore(qs);
   const today  = dateSession || new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
   const nb     = participants || "?";
@@ -697,7 +711,7 @@ ${narratif ? `<div class="sec pb">
 <scr'+'ipt>window.onload=()=>{ setTimeout(()=>window.print(),300); }</scr'+'ipt>
 </body></html>`;
 
-  const win = window.open('','_blank');
+  const win = existingWin || window.open('','_blank');
   if (!win) { alert("Autorisez les popups pour cet outil."); return; }
   win.document.write(html);
   win.document.close();
@@ -1185,7 +1199,7 @@ function App() {
       e('button', { onClick:()=>setShowUpload(true),
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📤 Importer PNG/ZIP"),
-      e('button', { onClick:()=>exportJSON(atelier,partenaire,animateur,participants,dateSession,questionsData),
+      e('button', { onClick:()=>exportJSON(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic),
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "💾 Export JSON"),
       e('button', {
@@ -1729,6 +1743,7 @@ function App() {
             if (data.animateur)    setAnimateur(data.animateur);
             if (data.participants) setParticipants(data.participants);
             if (data.dateSession)  setDateSession(data.dateSession);
+            if (data.niveauPublic) setNiveauPublic(data.niveauPublic);
             setQuestionsData(data.questions);
             ev.target.value = "";
           }
