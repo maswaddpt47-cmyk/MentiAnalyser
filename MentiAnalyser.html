@@ -890,6 +890,8 @@ async function analyserPNG(files, apiKey, setStatus, setProgress, setRetryInfo, 
 
   for (let i = 0; i < files.length; i++) {
     try {
+      const isPDF = files[i].type === 'application/pdf' || files[i].name.toLowerCase().endsWith('.pdf');
+
       const b64 = await new Promise((res, rej) => {
         const reader = new FileReader();
         reader.onload = () => res(reader.result.split(",")[1]);
@@ -897,21 +899,34 @@ async function analyserPNG(files, apiKey, setStatus, setProgress, setRetryInfo, 
         reader.readAsDataURL(files[i]);
       });
 
-      const mediaType = files[i].type === "image/jpeg" ? "image/jpeg" : "image/png";
+      const mediaType = isPDF ? "application/pdf"
+        : files[i].type === "image/jpeg" ? "image/jpeg" : "image/png";
 
-      const body = JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 300,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
-            { type: "text", text: `C'est une capture d'écran d'un quiz Mentimeter. Extrais ces informations et réponds UNIQUEMENT en JSON valide, rien d'autre :
+      const promptText = isPDF
+        ? `Ce PDF contient les résultats d'un quiz Mentimeter (plusieurs slides/pages). Pour CHAQUE question visible, extrais les informations et réponds UNIQUEMENT avec un tableau JSON valide, rien d'autre :
+[{"q":"texte question","correct":nb,"total":nb,"taux":pourcentage,"theme":"Thème"}, ...]
+Pour "theme", choisis parmi : ${THEMES_CONNUS.join(', ')}. Si aucun ne correspond, propose un thème court.
+Si aucune question n'est visible, réponds : []`
+        : `C'est une capture d'écran d'un quiz Mentimeter. Extrais ces informations et réponds UNIQUEMENT en JSON valide, rien d'autre :
 {"q":"texte exact de la question","correct":nombre_bonnes_réponses,"total":nombre_total_réponses,"taux":pourcentage_entier,"theme":"Thème"}
 Pour le champ "theme", choisis le plus approprié parmi : ${THEMES_CONNUS.join(', ')}.
 Si aucun ne correspond, propose un thème court en français.
-Si tu ne vois pas de question claire, réponds : {"erreur":"non reconnu"}` }
-          ]
+Si tu ne vois pas de question claire, réponds : {"erreur":"non reconnu"}`;
+
+      const contentSource = isPDF
+        ? { type:"base64", media_type:"application/pdf", data: b64 }
+        : { type:"base64", media_type: mediaType, data: b64 };
+
+      const contentBlock = isPDF
+        ? { type:"document", source: contentSource }
+        : { type:"image",    source: contentSource };
+
+      const body = JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: isPDF ? 2000 : 300,
+        messages: [{
+          role: "user",
+          content: [ contentBlock, { type: "text", text: promptText } ]
         }]
       });
 
@@ -945,20 +960,24 @@ Si tu ne vois pas de question claire, réponds : {"erreur":"non reconnu"}` }
       const clean = raw.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(clean);
 
-      if (parsed.erreur) {
-        errors.push({ file: files[i].name, motif: parsed.erreur });
-      } else if (parsed.q) {
-        const correct = parseInt(parsed.correct) || 0;
-        const total   = parseInt(parsed.total)   || 0;
-        const taux    = total > 0 ? Math.round(correct / total * 100) : (parseInt(parsed.taux) || 0);
-        results.push({
-          id: results.length + 1,
-          theme: parsed.theme || "Général",
-          q: parsed.q,
-          correct, total, taux,
-        });
-      } else {
-        errors.push({ file: files[i].name, motif: "JSON incomplet" });
+      // PDF → tableau de questions / Image → objet unique
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+      for (const item of items) {
+        if (!item || item.erreur) {
+          if (item?.erreur) errors.push({ file: files[i].name, motif: item.erreur });
+          continue;
+        }
+        if (!item.q) { errors.push({ file: files[i].name, motif: "JSON incomplet" }); continue; }
+        const correct = parseInt(item.correct) || 0;
+        const total   = parseInt(item.total)   || 0;
+        const taux    = total > 0 ? Math.round(correct / total * 100) : (parseInt(item.taux) || 0);
+        const norm = s => s.toLowerCase().replace(/\s+/g,' ').trim();
+        const doublon = results.find(r => norm(r.q) === norm(item.q));
+        if (doublon) {
+          errors.push({ file: files[i].name, motif: `Doublon ignoré : "${item.q.slice(0,40)}"` });
+        } else {
+          results.push({ id: results.length+1, theme: item.theme||"Général", q: item.q, correct, total, taux });
+        }
       }
     } catch(err) {
       errors.push({ file: files[i].name, motif: err.message || "Erreur inconnue" });
@@ -1259,7 +1278,7 @@ function App() {
       },
         // Titre
         e('div', { style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14} },
-          e('h2', { style:{fontSize:16,fontWeight:800,color:"#1e293b"} }, "📤 Importer PNG / ZIP Mentimeter"),
+          e('h2', { style:{fontSize:16,fontWeight:800,color:"#1e293b"} }, "📤 Importer PNG / ZIP / PDF Mentimeter"),
           uploadStatus==="idle" && e('button', {
             onClick: () => { setShowUpload(false); setUploadFiles([]); },
             style:{ background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8" }
@@ -1282,19 +1301,19 @@ function App() {
           onDrop: async ev => {
             ev.preventDefault(); setDragging(false);
             const rawFiles = Array.from(ev.dataTransfer.files || []);
-            const allImages = [];
+            const allFiles = [];
             for (const f of rawFiles) {
               if (f.name.toLowerCase().endsWith('.zip') || f.type === 'application/zip' || f.type === 'application/x-zip-compressed') {
-                try { allImages.push(...(await extractImagesFromZip(f))); }
+                try { allFiles.push(...(await extractImagesFromZip(f))); }
                 catch(err) { console.warn("Erreur extraction ZIP :", f.name, err); }
-              } else if (/image\/(png|jpe?g)/.test(f.type)) {
-                allImages.push(f);
+              } else if (/image\/(png|jpe?g)/.test(f.type) || f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
+                allFiles.push(f);
               }
             }
-            if (allImages.length) setUploadFiles(allImages);
+            if (allFiles.length) setUploadFiles(allFiles);
           },
         },
-          e('div', { style:{fontSize:28,marginBottom:6} }, dragging ? "📥" : "🖼📦"),
+          e('div', { style:{fontSize:28,marginBottom:6} }, dragging ? "📥" : "🖼📦📄"),
           e('div', { style:{fontSize:13,fontWeight:700,color:"#1e40af",marginBottom:3} },
             dragging
               ? "Déposer ici…"
@@ -1302,60 +1321,68 @@ function App() {
               ? `${uploadFiles.length} fichier(s) sélectionné(s)`
               : "Glisser-déposer ou cliquer pour sélectionner"
           ),
-          e('div', { style:{fontSize:11,color:"#94a3b8"} }, "PNG, JPEG individuels ou archive ZIP (sélection multiple)"),
+          e('div', { style:{fontSize:11,color:"#94a3b8"} }, "PNG, JPEG, PDF ou archive ZIP (sélection multiple)"),
           e('input', {
             id:"png-input", type:"file",
-            accept:"image/png,image/jpeg,.zip,application/zip,application/x-zip-compressed",
+            accept:"image/png,image/jpeg,application/pdf,.pdf,.zip,application/zip,application/x-zip-compressed",
             multiple:true,
             style:{display:"none"},
             onChange: async ev => {
               const rawFiles = Array.from(ev.target.files || []);
-              const allImages = [];
+              const allFiles = [];
               for (const f of rawFiles) {
                 if (f.name.toLowerCase().endsWith('.zip') || f.type === 'application/zip' || f.type === 'application/x-zip-compressed') {
                   try {
                     const extracted = await extractImagesFromZip(f);
-                    allImages.push(...extracted);
+                    allFiles.push(...extracted);
                   } catch(err) {
                     console.warn("Erreur extraction ZIP :", f.name, err);
                   }
                 } else {
-                  allImages.push(f);
+                  allFiles.push(f); // PNG, JPEG ou PDF
                 }
               }
-              setUploadFiles(allImages);
+              setUploadFiles(allFiles);
             }
           })
         ),
 
-        // Miniatures
+        // Miniatures / liste fichiers
         uploadStatus==="idle" && uploadFiles.length>0 && e('div', {
           style:{marginBottom:14}
         },
           e('div',{style:{fontSize:11,color:"#64748b",marginBottom:6,fontWeight:600}},
-            `${uploadFiles.length} image(s) prête(s)`),
+            `${uploadFiles.length} fichier(s) prêt(s) · ${uploadFiles.filter(f=>f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf')).length} PDF`),
           e('div',{style:{
             display:"grid",
             gridTemplateColumns:"repeat(auto-fill,minmax(72px,1fr))",
             gap:6, maxHeight:160, overflowY:"auto",
           }},
-            ...uploadFiles.map((f,i) =>
-              e('div',{key:i,style:{position:"relative",borderRadius:8,overflow:"hidden",
-                border:"1px solid #e2e8f0",aspectRatio:"1",background:"#f8fafc"}},
-                e('img',{
-                  src: URL.createObjectURL(f),
-                  alt: f.name,
-                  style:{width:"100%",height:"100%",objectFit:"cover",display:"block"},
-                  onLoad: ev => URL.revokeObjectURL(ev.target.src),
-                }),
-                e('div',{style:{
+            ...uploadFiles.map((f,i) => {
+              const isPDF = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+              return e('div',{key:i,style:{position:"relative",borderRadius:8,overflow:"hidden",
+                border:"1px solid #e2e8f0",aspectRatio:"1",background:isPDF?"#fef3c7":"#f8fafc",
+                display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}},
+                isPDF
+                  ? e('div',null,
+                      e('div',{style:{fontSize:28}},"📄"),
+                      e('div',{style:{fontSize:7,color:"#92400e",fontWeight:700,textAlign:"center",padding:"0 4px",
+                        overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:68}},f.name)
+                    )
+                  : e('img',{
+                      src: URL.createObjectURL(f),
+                      alt: f.name,
+                      style:{width:"100%",height:"100%",objectFit:"cover",display:"block"},
+                      onLoad: ev => URL.revokeObjectURL(ev.target.src),
+                    }),
+                !isPDF && e('div',{style:{
                   position:"absolute",bottom:0,left:0,right:0,
                   background:"rgba(0,0,0,0.55)",color:"#fff",
                   fontSize:8,padding:"2px 4px",
                   overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
                 }}, f.name)
-              )
-            )
+              );
+            })
           )
         ),
 
@@ -2000,11 +2027,30 @@ function App() {
     })(),
 
     e('div',{style:{padding:"28px 32px",maxWidth:1200,margin:"0 auto"}},
-      statCards, tabs,
-      tab==="themes"    ? vueThemes    :
-      tab==="questions" ? vueQuestions :
-      vueRadar,
-      legende
+      questionsData.length === 0
+      ? e('div',{style:{
+          textAlign:"center",padding:"60px 20px",
+          background:"#fff",borderRadius:20,
+          border:"2px dashed #e2e8f0",marginTop:8,
+        }},
+          e('div',{style:{fontSize:56,marginBottom:16}},"📊"),
+          e('div',{style:{fontSize:20,fontWeight:800,color:"#1e293b",marginBottom:8}},
+            "Aucune donnée à afficher"),
+          e('div',{style:{fontSize:14,color:"#64748b",marginBottom:24,maxWidth:380,margin:"0 auto 24px"}},
+            "Importez vos captures PNG, JPEG, PDF ou une archive ZIP depuis Mentimeter pour commencer l'analyse."),
+          e('button',{
+            onClick:()=>setShowUpload(true),
+            style:{background:"#1e40af",color:"#fff",border:"none",borderRadius:12,
+              padding:"12px 28px",fontSize:14,fontWeight:700,cursor:"pointer"}
+          },"📤 Importer des fichiers")
+        )
+      : e('div',null,
+          statCards, tabs,
+          tab==="themes"    ? vueThemes    :
+          tab==="questions" ? vueQuestions :
+          vueRadar,
+          legende
+        )
     )
   );
 }
