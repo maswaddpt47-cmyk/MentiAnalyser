@@ -881,12 +881,13 @@ async function fetchAvecRetry(url, options, maxRetries=3) {
   }
 }
 
-async function analyserPNG(files, apiKey, setStatus, setProgress, setRetryInfo, setResults, setErrors, setQuestionsData) {
+async function analyserPNG(files, apiKey, setStatus, setProgress, setRetryInfo, setResults, setErrors, setQuestionsData, sourceContext="") {
   setStatus("loading");
   setProgress(0);
   setRetryInfo(null);
   const results = [];
   const errors  = [];
+  const isMenti = !sourceContext.trim(); // mode Mentimeter si pas de description
 
   for (let i = 0; i < files.length; i++) {
     try {
@@ -902,32 +903,43 @@ async function analyserPNG(files, apiKey, setStatus, setProgress, setRetryInfo, 
       const mediaType = isPDF ? "application/pdf"
         : files[i].type === "image/jpeg" ? "image/jpeg" : "image/png";
 
-      const promptText = isPDF
-        ? `Ce PDF contient les résultats d'un quiz Mentimeter (plusieurs slides/pages). Pour CHAQUE question visible, extrais les informations et réponds UNIQUEMENT avec un tableau JSON valide, rien d'autre :
+      // ── Prompt selon le mode
+      let promptText;
+      if (isMenti) {
+        // Mode Mentimeter — comportement d'origine
+        promptText = isPDF
+          ? `Ce PDF contient les résultats d'un quiz Mentimeter (plusieurs slides/pages). Pour CHAQUE question visible, extrais les informations et réponds UNIQUEMENT avec un tableau JSON valide, rien d'autre :
 [{"q":"texte question","correct":nb,"total":nb,"taux":pourcentage,"theme":"Thème"}, ...]
 Pour "theme", choisis parmi : ${THEMES_CONNUS.join(', ')}. Si aucun ne correspond, propose un thème court.
 Si aucune question n'est visible, réponds : []`
-        : `C'est une capture d'écran d'un quiz Mentimeter. Extrais ces informations et réponds UNIQUEMENT en JSON valide, rien d'autre :
+          : `C'est une capture d'écran d'un quiz Mentimeter. Extrais ces informations et réponds UNIQUEMENT en JSON valide, rien d'autre :
 {"q":"texte exact de la question","correct":nombre_bonnes_réponses,"total":nombre_total_réponses,"taux":pourcentage_entier,"theme":"Thème"}
 Pour le champ "theme", choisis le plus approprié parmi : ${THEMES_CONNUS.join(', ')}.
 Si aucun ne correspond, propose un thème court en français.
 Si tu ne vois pas de question claire, réponds : {"erreur":"non reconnu"}`;
+      } else {
+        // Mode source libre — prompt générique
+        promptText = `Contexte : ${sourceContext.trim()}
 
-      const contentSource = isPDF
-        ? { type:"base64", media_type:"application/pdf", data: b64 }
-        : { type:"base64", media_type: mediaType, data: b64 };
+Analyse ce ${isPDF?'document':'fichier'} et extrais TOUTES les questions, items évaluatifs, ou données mesurables visibles (quiz, sondage, questionnaire, résultats, scores…).
+Pour chaque item, réponds UNIQUEMENT avec un tableau JSON valide, rien d'autre :
+[{"q":"intitulé ou question","correct":nombre_corrects_ou_null,"total":nombre_répondants_ou_null,"taux":pourcentage_entier_ou_0,"theme":"catégorie_pertinente"}, ...]
+
+Règles :
+- "taux" : si disponible directement, utilise-le. Sinon calcule correct/total*100. Sinon mets 0.
+- "correct" et "total" : mets 0 si non applicables ou non visibles.
+- "theme" : détermine librement une catégorie pertinente selon le contenu (2-4 mots max).
+- Si aucun item exploitable n'est visible, réponds : []`;
+      }
 
       const contentBlock = isPDF
-        ? { type:"document", source: contentSource }
-        : { type:"image",    source: contentSource };
+        ? { type:"document", source:{ type:"base64", media_type:"application/pdf", data:b64 } }
+        : { type:"image",    source:{ type:"base64", media_type: mediaType,          data:b64 } };
 
       const body = JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: isPDF ? 2000 : 300,
-        messages: [{
-          role: "user",
-          content: [ contentBlock, { type: "text", text: promptText } ]
-        }]
+        max_tokens: isPDF ? 2000 : 400,
+        messages: [{ role:"user", content:[ contentBlock, { type:"text", text:promptText } ] }]
       });
 
       let resp;
@@ -1024,6 +1036,7 @@ function App() {
   const [mdpStatus,    setMdpStatus]    = useState("idle");
   const [showMdp,      setShowMdp]      = useState(false);
   const [showUpload,   setShowUpload]   = useState(false);
+  const [uploadSource, setUploadSource] = useState(""); // description de la source
   const [uploadFiles,  setUploadFiles]  = useState([]);
   const [uploadStatus, setUploadStatus] = useState("idle");
   const [uploadProgress,setUploadProgress] = useState(0);
@@ -1285,7 +1298,23 @@ function App() {
           }, "✕")
         ),
 
-        // Zone drop
+        // Champ description source
+        uploadStatus==="idle" && e('div',{style:{marginBottom:14}},
+          e('div',{style:{fontSize:11,color:"#64748b",fontWeight:600,marginBottom:5,textTransform:"uppercase",letterSpacing:.8}},
+            "📋 Description de la source (optionnel)"),
+          e('textarea',{
+            value: uploadSource,
+            onChange: ev => setUploadSource(ev.target.value),
+            placeholder: "Ex: Résultats Mentimeter — Prudence sur Internet\nEx: Questionnaire de satisfaction post-formation Word\nEx: Sondage Kahoot sur les réseaux sociaux\n\nLaissez vide pour le mode Mentimeter par défaut.",
+            rows: 3,
+            style:{
+              width:"100%", border:"1px solid #e2e8f0", borderRadius:10,
+              padding:"10px 12px", fontSize:12, fontFamily:"inherit",
+              outline:"none", background:"#f8fafc", resize:"vertical",
+              color:"#1e293b", lineHeight:1.5,
+            }
+          })
+        ),
         uploadStatus==="idle" && e('div', {
           style:{
             border:`2px dashed ${dragging?"#1e40af":uploadFiles.length>0?"#1e40af":"#bfdbfe"}`,
@@ -1460,13 +1489,13 @@ function App() {
         // Boutons action
         e('div', { style:{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4} },
           e('button', {
-            onClick: () => { setShowUpload(false); setUploadFiles([]); setUploadStatus("idle"); setUploadResults([]); setUploadErrors([]); setUploadProgress(0); },
+            onClick: () => { setShowUpload(false); setUploadFiles([]); setUploadStatus("idle"); setUploadResults([]); setUploadErrors([]); setUploadProgress(0); setUploadSource(""); },
             style:{ background:"#f1f5f9",border:"none",borderRadius:10,
               padding:"9px 16px",fontWeight:600,fontSize:13,cursor:"pointer",color:"#475569" }
           }, uploadStatus==="done" ? "Fermer" : "Annuler"),
 
           uploadStatus==="idle" && uploadFiles.length>0 && apiKey && e('button', {
-            onClick: () => analyserPNG(uploadFiles, apiKey, setUploadStatus, setUploadProgress, setUploadRetryInfo, setUploadResults, setUploadErrors, setQuestionsData),
+            onClick: () => analyserPNG(uploadFiles, apiKey, setUploadStatus, setUploadProgress, setUploadRetryInfo, setUploadResults, setUploadErrors, setQuestionsData, uploadSource),
             style:{ background:"#1e40af",border:"none",borderRadius:10,
               padding:"9px 16px",fontWeight:700,fontSize:13,cursor:"pointer",color:"#fff" }
           }, `Analyser ${uploadFiles.length} image(s) →`),
@@ -1849,7 +1878,7 @@ function App() {
             onClick:()=>{
               setQuestionsData(uploadResults);
               setShowReview(false); setShowUpload(false);
-              setUploadStatus("idle"); setUploadFiles([]); setUploadResults([]); setUploadErrors([]); setUploadProgress(0);
+              setUploadStatus("idle"); setUploadFiles([]); setUploadResults([]); setUploadErrors([]); setUploadProgress(0); setUploadSource("");
             },
             style:{background:"#16a34a",border:"none",borderRadius:10,
               padding:"9px 18px",fontWeight:700,fontSize:13,cursor:"pointer",color:"#fff"}
