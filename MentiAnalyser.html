@@ -24,29 +24,10 @@ button{cursor:pointer;font-family:inherit}
   #root > div > div:first-child{background:#1e40af !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   @page{margin:15mm;size:A4}
 }
-/* Avertissement portrait */
-#portrait-warning{
-  display:none;
-  position:fixed;inset:0;z-index:9999;
-  background:linear-gradient(135deg,#1e3a8a,#2563eb);
-  color:#fff;flex-direction:column;align-items:center;justify-content:center;gap:20px;
-  text-align:center;padding:32px;
-}
-@media (orientation:portrait) and (max-width:768px){
-  #portrait-warning{display:flex}
-}
 </style>
 </head>
 <body>
 
-<!-- Avertissement orientation -->
-<div id="portrait-warning">
-  <div style="font-size:56px">📱↔️</div>
-  <div style="font-size:20px;font-weight:800">Tournez votre écran</div>
-  <div style="font-size:14px;color:#bfdbfe;max-width:260px">
-    MentiAnalyser est optimisé en mode paysage pour afficher les graphiques correctement.
-  </div>
-</div>
 
 <div id="root"></div>
 
