@@ -1071,6 +1071,7 @@ function App() {
   const [apiKey,       setApiKey]       = useState("");
   const [mdpStatus,    setMdpStatus]    = useState("idle");
   const [showMdp,      setShowMdp]      = useState(false);
+  const [showHint,     setShowHint]     = useState(false);
   const [showUpload,   setShowUpload]   = useState(false);
   const [uploadSource, setUploadSource] = useState(""); // description de la source
   const [uploadFiles,  setUploadFiles]  = useState([]);
@@ -1217,7 +1218,7 @@ function App() {
           })
         ),
         // Mot de passe IA
-        e('div', null,
+        e('div', {style:{position:"relative"}},
           fieldLabel("🔑 Mot de passe IA"),
           e('div', { style:{display:"flex", gap:6, alignItems:"center"} },
             e('input', {
@@ -1234,8 +1235,25 @@ function App() {
               },
               style:{...fieldStyle, minWidth:140, fontFamily:"monospace"},
               placeholder:"Mot de passe…",
-              title:"💡 Aide-mémoire : \"Je suis né à Broummana, le 4 septembre 1961, au numéro 202 de la rue principale.\"",
             }),
+            e('button', {
+              onClick: () => setShowHint(s => !s),
+              title: "Aide-mémoire",
+              style:{
+                background: showHint ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.15)",
+                border:"none", borderRadius:7, color:"#fff",
+                padding:"5px 9px", fontSize:14, cursor:"pointer",
+              }
+            }, "💡"),
+            showHint && e('div',{style:{
+              position:"absolute", top:"100%", left:0, right:0, marginTop:6, zIndex:100,
+              background:"#1e3a8a", border:"1px solid #3b82f6", borderRadius:10,
+              padding:"10px 14px", fontSize:12, color:"#bfdbfe", lineHeight:1.6,
+              boxShadow:"0 8px 24px rgba(0,0,0,0.3)",
+            }},
+              e('div',{style:{fontWeight:700,color:"#93c5fd",marginBottom:4}},"💡 Aide-mémoire"),
+              "\"Je suis né à Broummana, le 4 septembre 1961, au numéro 202 de la rue principale.\""
+            ),
             e('button', {
               onClick: () => setShowMdp(s => !s),
               title: showMdp ? "Masquer" : "Afficher",
