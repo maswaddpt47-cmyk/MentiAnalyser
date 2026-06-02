@@ -441,6 +441,7 @@ Ton sobre et institutionnel. Environ 400 mots. Pas de markdown. Texte pur avec t
     return;
   }
 
+  console.log('narratif length:', narratif.length, narratif.slice(0,100));
   exportPDF(atelier, partenaire, animateur, participants, dateSession, qs, niveauPublic, narratif, null);
 }
 
