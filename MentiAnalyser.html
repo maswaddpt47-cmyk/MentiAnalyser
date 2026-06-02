@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>MentiAnalyser — Conseil Départemental 47</title>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
@@ -362,6 +364,9 @@ async function exportPPTX(atelier, partenaire, animateur, participants, dateSess
 async function exportPDFAvecIA(atelier, partenaire, animateur, participants, dateSession, niveauPublic, qs, apiKey) {
   if (!apiKey) { alert("Clé API requise pour la synthèse IA."); return; }
 
+  // Ouvrir la fenêtre AVANT le await — seul moyen d'éviter le blocage popup navigateur
+  // Génération directe sans window.open
+
   const score  = globalScore(qs);
   const themes = byTheme(qs);
   const today  = dateSession || new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
@@ -494,7 +499,7 @@ function exportPDF(atelier, partenaire, animateur, participants, dateSession, qs
   const html=`<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"/>
 <title>${atelier||'Synthèse'} — ${partenaire||''}</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></scr'+'ipt>
+
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-size:13px}
@@ -698,38 +703,96 @@ ${narratif ? `<div class="sec pb">
   </div>
 </div>
 </div><!-- fin #rapport -->
-<scr'+'ipt>
-function telecharger() {
-  const btn = document.getElementById('btn-dl');
-  btn.textContent = '⏳ Génération…';
-  btn.disabled = true;
-  const safe = "${(atelier||'Synthese').replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,40)}";
-  const opt = {
-    margin: [10,10,10,10],
-    filename: safe + '.pdf',
-    image: { type:'jpeg', quality:0.95 },
-    html2canvas: { scale:2, useCORS:true, logging:false },
-    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
-    pagebreak: { mode:['avoid-all','css'] },
-  };
-  html2pdf().set(opt).from(document.getElementById('rapport')).save()
-    .then(()=>{ btn.textContent='⬇️ Télécharger PDF'; btn.disabled=false; });
-}
-</scr'+'ipt>
 </body></html>`;
 
-  // Téléchargement blob — pas de window.open (bloqué sur Chrome mobile)
-  if (existingWin) { try { existingWin.close(); } catch(e){} }
-  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  const safeName = (atelier||'Rapport').replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,40);
-  a.download = safeName + '_rapport.html';
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+  // Génération PDF via html2canvas+jsPDF — compatible file://
+  const safe = (atelier||'Rapport').replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,40);
+  const A4_PX = 794;
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:'+A4_PX+'px;background:#fff;overflow:hidden';
+  const parser = new DOMParser();
+  const doc2 = parser.parseFromString(html, 'text/html');
+  doc2.querySelectorAll('style').forEach(s => { const sc=document.createElement('style'); sc.textContent=s.textContent; container.appendChild(sc); });
+  const fixStyle = document.createElement('style');
+  fixStyle.textContent = 'body,#rapport{width:'+A4_PX+'px!important;max-width:'+A4_PX+'px!important;box-sizing:border-box}.stat-grid{grid-template-columns:repeat(4,1fr)!important}.row3{grid-template-columns:140px 1fr 140px!important}svg{max-width:100%}';
+  container.appendChild(fixStyle);
+  const rapport = doc2.getElementById('rapport');
+  if (!rapport) { alert('Erreur: rapport vide'); return; }
+  container.appendChild(rapport);
+  document.body.appendChild(container);
+  const btns = document.querySelectorAll('[data-pdf-btn]');
+  btns.forEach(b => { b.textContent='\u23F3 G\u00E9n\u00E9ration\u2026'; b.disabled=true; });
+  setTimeout(() => {
+    html2canvas(container, { scale:2, useCORS:true, logging:false, backgroundColor:'#ffffff', width:A4_PX, windowWidth:A4_PX })
+    .then(canvas => {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const margin = 10; // mm
+      const contentW = pw - margin * 2;
+      const contentH = ph - margin * 2;
+      // Ratio px -> mm
+      const pxToMm = contentW / container.offsetWidth;
+      const totalMmH = canvas.height * pxToMm;
+      const pageHeightPx = contentH / pxToMm;
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+      let pageTop = 0; // en px dans le canvas
+      let firstPage = true;
+      while (pageTop < canvas.height) {
+        if (!firstPage) pdf.addPage();
+        firstPage = false;
+
+        // Découper proprement : reculer si on coupe en plein texte
+        let pageBot = Math.min(pageTop + pageHeightPx, canvas.height);
+
+        // Chercher une zone "blanche" (blanc ou quasi-blanc) pour couper proprement
+        if (pageBot < canvas.height) {
+          const ctx2 = document.createElement('canvas');
+          ctx2.width = 1; ctx2.height = 1;
+          const probe = document.createElement('canvas');
+          probe.width = canvas.width; probe.height = 20;
+          const pctx = probe.getContext('2d');
+          // Scanner 30px vers le haut pour trouver une ligne blanche
+          let cut = Math.floor(pageBot);
+          for (let scan = cut; scan > cut - 60 && scan > pageTop + 100; scan--) {
+            pctx.clearRect(0,0,canvas.width,20);
+            pctx.drawImage(canvas, 0, scan, canvas.width, 1, 0, 0, canvas.width, 1);
+            const d = pctx.getImageData(0,0,canvas.width,1).data;
+            let isLight = true;
+            for (let i=0; i<d.length; i+=4) {
+              if (d[i]<230 || d[i+1]<230 || d[i+2]<230) { isLight=false; break; }
+            }
+            if (isLight) { pageBot = scan; break; }
+          }
+        }
+
+        const sliceH = pageBot - pageTop;
+        const sliceMmH = sliceH * pxToMm;
+
+        // Créer un canvas pour cette tranche
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width;
+        slice.height = sliceH;
+        const sctx = slice.getContext('2d');
+        sctx.fillStyle = '#ffffff';
+        sctx.fillRect(0, 0, slice.width, slice.height);
+        sctx.drawImage(canvas, 0, pageTop, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        const sliceData = slice.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(sliceData, 'JPEG', margin, margin, contentW, sliceMmH);
+
+        pageTop = pageBot;
+      }
+      pdf.save(safe + '.pdf');
+      document.body.removeChild(container);
+      btns.forEach(b => { b.textContent='\u2B07\uFE0F Exporter PDF'; b.disabled=false; });
+    }).catch(err => {
+      document.body.removeChild(container);
+      btns.forEach(b => { b.textContent='\u2B07\uFE0F Exporter PDF'; b.disabled=false; });
+      alert('Erreur PDF: ' + err.message);
+    });
+  }, 100);
 }
 
 // ── EXPORT B — SYNTHÈSE NARRATIVE RTF (statique, sans API) ───────────────────
@@ -1296,11 +1359,11 @@ function App() {
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "🎬 Présenter"),
       e('button', {
-        onClick:()=>exportPDF(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic),
+        onClick:()=>exportPDF(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic),'data-pdf-btn':true,
         style:{background:"#fff",color:"#1e40af",border:"none",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:"0 2px 10px rgba(0,0,0,0.18)"}
       }, "📊 Export PDF"),
       e('button', {
-        onClick:()=>exportPDFAvecIA(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData,apiKey),
+        onClick:()=>exportPDFAvecIA(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData,apiKey),'data-pdf-btn':true,
         disabled:!apiKey,
         title:apiKey?"":"Entrez votre mot de passe IA pour activer",
         style:{background:apiKey?"#7c3aed":"#94a3b8",color:"#fff",border:"none",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:apiKey?"0 2px 10px rgba(0,0,0,0.2)":"none",cursor:apiKey?"pointer":"not-allowed"}
