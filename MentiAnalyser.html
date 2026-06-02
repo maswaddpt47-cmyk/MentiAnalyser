@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>MentiAnalyser — Conseil Départemental 47</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
@@ -27,9 +25,35 @@ button{cursor:pointer;font-family:inherit}
   @page{margin:15mm;size:A4}
 }
 </style>
+<style>
+/* ── Section récap intégrée ── */
+#recap-section{display:none;position:fixed;inset:0;z-index:9000;background:#f1f5f9;overflow-y:auto;flex-direction:column}
+#recap-section.open{display:flex}
+#recap-bar{position:sticky;top:0;background:#1e3a8a;padding:12px 24px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.25);z-index:10}
+#recap-bar .btn-impr{background:#22c55e;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+#recap-bar .btn-ferm{background:rgba(239,68,68,0.35);color:#fecaca;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+#recap-bar .recap-titre{color:#93c5fd;font-size:13px;flex:1}
+#recap-inner{background:#fff;max-width:860px;margin:24px auto;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.1);overflow:hidden}
+@media print{
+  #recap-bar{display:none!important}
+  #recap-section{position:absolute!important;overflow:visible!important;background:#fff!important}
+  #recap-inner{box-shadow:none!important;margin:0!important;max-width:100%!important}
+  body > *:not(#recap-section){display:none!important}
+}
+</style>
 </head>
 <body>
 
+
+<!-- Section récap intégrée -->
+<div id="recap-section">
+  <div id="recap-bar">
+    <span class="recap-titre" id="recap-titre">📊 Rapport</span>
+    <button class="btn-impr" onclick="window.print()">🖨 Imprimer / Enregistrer en PDF</button>
+    <button class="btn-ferm" onclick="fermerRecap()">✕ Fermer</button>
+  </div>
+  <div id="recap-inner"></div>
+</div>
 
 <div id="root"></div>
 
@@ -365,7 +389,7 @@ async function exportPDFAvecIA(atelier, partenaire, animateur, participants, dat
   if (!apiKey) { alert("Clé API requise pour la synthèse IA."); return; }
 
   // Ouvrir la fenêtre AVANT le await — seul moyen d'éviter le blocage popup navigateur
-  // Génération directe sans window.open
+  // Génération IA — récap affiché après fetch
 
   const score  = globalScore(qs);
   const themes = byTheme(qs);
@@ -383,6 +407,14 @@ Parfaitement maîtrisés (100%) : ${qs.filter(q=>q.taux===100).map(q=>`"${q.q}"`
 Rédige en français une synthèse structurée : 1.Contexte 2.Résultats globaux 3.Points forts 4.Lacunes 5.Recommandations 6.Conclusion
 Ton sobre et institutionnel. Environ 400 mots. Pas de markdown. Texte pur avec titres numérotés.`;
 
+  // Afficher spinner dans le recap pendant la génération IA
+  const inner = document.getElementById('recap-inner');
+  const sec = document.getElementById('recap-section');
+  inner.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:20px"><div style="width:52px;height:52px;border:5px solid #e2e8f0;border-top-color:#7c3aed;border-radius:50%;animation:spin 0.8s linear infinite"></div><p style="color:#64748b;font-size:15px;font-weight:600">Génération de la synthèse IA…</p></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+  document.getElementById('recap-titre').textContent = '⏳ Synthèse IA en cours…';
+  sec.classList.add('open');
+  sec.scrollTop = 0;
+
   let narratif = "";
   try {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -393,13 +425,22 @@ Ton sobre et institutionnel. Environ 400 mots. Pas de markdown. Texte pur avec t
         messages:[{role:"user",content:prompt}]})
     });
     const data = await resp.json();
-    if (!data.error) narratif = data.content?.map(b=>b.text||'').join('\n').trim() || "";
+    console.log('IA response:', JSON.stringify(data).slice(0,500));
+    if (data.error) {
+      inner.innerHTML = '<div style="padding:40px;color:#dc2626;font-size:14px;line-height:1.8">❌ Erreur IA :<br><code>' + JSON.stringify(data.error) + '</code></div>';
+      return;
+    }
+    narratif = data.content?.map(b=>b.text||'').join('\n').trim() || "";
+    if (!narratif) {
+      inner.innerHTML = '<div style="padding:40px;color:#d97706;font-size:14px">⚠️ Réponse IA vide.<br><code>' + JSON.stringify(data).slice(0,300) + '</code></div>';
+      return;
+    }
   } catch(e) {
-    console.warn("IA indisponible:", e);
-    narratif = "";
+    console.error('IA fetch error:', e);
+    inner.innerHTML = '<div style="padding:40px;color:#dc2626;font-size:14px">❌ Erreur réseau : ' + e.message + '</div>';
+    return;
   }
 
-  // Générer le HTML du PDF dans la fenêtre déjà ouverte
   exportPDF(atelier, partenaire, animateur, participants, dateSession, qs, niveauPublic, narratif, null);
 }
 
@@ -499,7 +540,7 @@ function exportPDF(atelier, partenaire, animateur, participants, dateSession, qs
   const html=`<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"/>
 <title>${atelier||'Synthèse'} — ${partenaire||''}</title>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></scr'+'ipt>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-size:13px}
@@ -703,97 +744,73 @@ ${narratif ? `<div class="sec pb">
   </div>
 </div>
 </div><!-- fin #rapport -->
+<scr'+'ipt>
+function telecharger() {
+  const btn = document.getElementById('btn-dl');
+  btn.textContent = '⏳ Génération…';
+  btn.disabled = true;
+  const safe = "${(atelier||'Synthese').replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,40)}";
+  const opt = {
+    margin: [10,10,10,10],
+    filename: safe + '.pdf',
+    image: { type:'jpeg', quality:0.95 },
+    html2canvas: { scale:2, useCORS:true, logging:false },
+    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+    pagebreak: { mode:['avoid-all','css'] },
+  };
+  html2pdf().set(opt).from(document.getElementById('rapport')).save()
+    .then(()=>{ btn.textContent='⬇️ Télécharger PDF'; btn.disabled=false; });
+}
+</scr'+'ipt>
 </body></html>`;
 
-  // Génération PDF via html2canvas+jsPDF — compatible file://
-  const safe = (atelier||'Rapport').replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,40);
-  const A4_PX = 794;
-  const container = document.createElement('div');
-  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:'+A4_PX+'px;background:#fff;overflow:hidden';
-  const parser = new DOMParser();
-  const doc2 = parser.parseFromString(html, 'text/html');
-  doc2.querySelectorAll('style').forEach(s => { const sc=document.createElement('style'); sc.textContent=s.textContent; container.appendChild(sc); });
-  const fixStyle = document.createElement('style');
-  fixStyle.textContent = 'body,#rapport{width:'+A4_PX+'px!important;max-width:'+A4_PX+'px!important;box-sizing:border-box}.stat-grid{grid-template-columns:repeat(4,1fr)!important}.row3{grid-template-columns:140px 1fr 140px!important}svg{max-width:100%}';
-  container.appendChild(fixStyle);
-  const rapport = doc2.getElementById('rapport');
-  if (!rapport) { alert('Erreur: rapport vide'); return; }
-  container.appendChild(rapport);
-  document.body.appendChild(container);
-  const btns = document.querySelectorAll('[data-pdf-btn]');
-  btns.forEach(b => { b.textContent='\u23F3 G\u00E9n\u00E9ration\u2026'; b.disabled=true; });
-  setTimeout(() => {
-    html2canvas(container, { scale:2, useCORS:true, logging:false, backgroundColor:'#ffffff', width:A4_PX, windowWidth:A4_PX })
-    .then(canvas => {
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
-      const pw = pdf.internal.pageSize.getWidth();
-      const ph = pdf.internal.pageSize.getHeight();
-      const margin = 10; // mm
-      const contentW = pw - margin * 2;
-      const contentH = ph - margin * 2;
-      // Ratio px -> mm
-      const pxToMm = contentW / container.offsetWidth;
-      const totalMmH = canvas.height * pxToMm;
-      const pageHeightPx = contentH / pxToMm;
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+  // Injection dans la section récap — split sur marqueur de fin unique
+  const inner = document.getElementById('recap-inner');
+  inner.innerHTML = '';
 
-      let pageTop = 0; // en px dans le canvas
-      let firstPage = true;
-      while (pageTop < canvas.height) {
-        if (!firstPage) pdf.addPage();
-        firstPage = false;
+  // Styles
+  const styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
+  if (styleMatch) {
+    const sc = document.createElement('style');
+    sc.textContent = styleMatch[1]
+      .replace(/\.toolbar[^{]*\{[^}]*\}/g,'')
+      .replace(/\.btn-dl[^{]*\{[^}]*\}/g,'')
+      .replace(/\.btn-print[^{]*\{[^}]*\}/g,'')
+      .replace(/\.btn-close[^{]*\{[^}]*\}/g,'');
+    inner.appendChild(sc);
+  }
 
-        // Découper proprement : reculer si on coupe en plein texte
-        let pageBot = Math.min(pageTop + pageHeightPx, canvas.height);
+  // Extraire tout ce qui est entre <div id="rapport"> et le marqueur fin
+  const DEBUT = '<div id="rapport">';
+  const FIN   = '</div><!-- fin #rapport -->';
+  const idxD  = html.indexOf(DEBUT);
+  const idxF  = html.indexOf(FIN);
+  if (idxD !== -1 && idxF !== -1) {
+    let contenu = html.slice(idxD + DEBUT.length, idxF);
+    // Supprimer le QR code (img externe bloquée en file://)
+    contenu = contenu.replace(/<img[^>]*qrserver\.com[^>]*>/g, '');
+    const wrapper = document.createElement('div');
+    wrapper.id = 'rapport';
+    wrapper.innerHTML = contenu;
+    const tb = wrapper.querySelector('.toolbar');
+    if (tb) tb.remove();
+    inner.appendChild(wrapper);
+  } else {
+    inner.innerHTML = '<p style="padding:40px;color:red">Erreur: marqueurs rapport non trouvés (debut:'+idxD+' fin:'+idxF+')</p>';
+  }
 
-        // Chercher une zone "blanche" (blanc ou quasi-blanc) pour couper proprement
-        if (pageBot < canvas.height) {
-          const ctx2 = document.createElement('canvas');
-          ctx2.width = 1; ctx2.height = 1;
-          const probe = document.createElement('canvas');
-          probe.width = canvas.width; probe.height = 20;
-          const pctx = probe.getContext('2d');
-          // Scanner 30px vers le haut pour trouver une ligne blanche
-          let cut = Math.floor(pageBot);
-          for (let scan = cut; scan > cut - 60 && scan > pageTop + 100; scan--) {
-            pctx.clearRect(0,0,canvas.width,20);
-            pctx.drawImage(canvas, 0, scan, canvas.width, 1, 0, 0, canvas.width, 1);
-            const d = pctx.getImageData(0,0,canvas.width,1).data;
-            let isLight = true;
-            for (let i=0; i<d.length; i+=4) {
-              if (d[i]<230 || d[i+1]<230 || d[i+2]<230) { isLight=false; break; }
-            }
-            if (isLight) { pageBot = scan; break; }
-          }
-        }
-
-        const sliceH = pageBot - pageTop;
-        const sliceMmH = sliceH * pxToMm;
-
-        // Créer un canvas pour cette tranche
-        const slice = document.createElement('canvas');
-        slice.width = canvas.width;
-        slice.height = sliceH;
-        const sctx = slice.getContext('2d');
-        sctx.fillStyle = '#ffffff';
-        sctx.fillRect(0, 0, slice.width, slice.height);
-        sctx.drawImage(canvas, 0, pageTop, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-        const sliceData = slice.toDataURL('image/jpeg', 0.95);
-        pdf.addImage(sliceData, 'JPEG', margin, margin, contentW, sliceMmH);
-
-        pageTop = pageBot;
-      }
-      pdf.save(safe + '.pdf');
-      document.body.removeChild(container);
-      btns.forEach(b => { b.textContent='\u2B07\uFE0F Exporter PDF'; b.disabled=false; });
-    }).catch(err => {
-      document.body.removeChild(container);
-      btns.forEach(b => { b.textContent='\u2B07\uFE0F Exporter PDF'; b.disabled=false; });
-      alert('Erreur PDF: ' + err.message);
-    });
-  }, 100);
+  document.getElementById('recap-titre').textContent = '\uD83D\uDCCA ' + (atelier||'Rapport') + (partenaire ? ' \u2014 ' + partenaire : '');
+  const sec = document.getElementById('recap-section');
+  sec.classList.add('open');
+  sec.scrollTop = 0;
 }
+function fermerRecap() {
+  document.getElementById('recap-section').classList.remove('open');
+  document.getElementById('recap-inner').innerHTML = '';
+}
+window.fermerRecap = fermerRecap;
+window.exportPDF = exportPDF;
+window.exportPDFAvecIA = exportPDFAvecIA;
 
 // ── EXPORT B — SYNTHÈSE NARRATIVE RTF (statique, sans API) ───────────────────
 function exportSynthese(atelier, partenaire, animateur, participants, dateSession, apiKey, qs=questions) {
@@ -1359,11 +1376,11 @@ function App() {
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "🎬 Présenter"),
       e('button', {
-        onClick:()=>exportPDF(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic),'data-pdf-btn':true,
+        onClick:()=>exportPDF(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic),
         style:{background:"#fff",color:"#1e40af",border:"none",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:"0 2px 10px rgba(0,0,0,0.18)"}
       }, "📊 Export PDF"),
       e('button', {
-        onClick:()=>exportPDFAvecIA(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData,apiKey),'data-pdf-btn':true,
+        onClick:()=>exportPDFAvecIA(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData,apiKey),
         disabled:!apiKey,
         title:apiKey?"":"Entrez votre mot de passe IA pour activer",
         style:{background:apiKey?"#7c3aed":"#94a3b8",color:"#fff",border:"none",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:apiKey?"0 2px 10px rgba(0,0,0,0.2)":"none",cursor:apiKey?"pointer":"not-allowed"}
