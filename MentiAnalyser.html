@@ -362,16 +362,6 @@ async function exportPPTX(atelier, partenaire, animateur, participants, dateSess
 async function exportPDFAvecIA(atelier, partenaire, animateur, participants, dateSession, niveauPublic, qs, apiKey) {
   if (!apiKey) { alert("Clé API requise pour la synthèse IA."); return; }
 
-  // Ouvrir la fenêtre AVANT le await — seul moyen d'éviter le blocage popup navigateur
-  const win = window.open('', '_blank');
-  if (!win) { alert("Autorisez les popups pour cet outil."); return; }
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Génération en cours…</title>
-    <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f8fafc;flex-direction:column;gap:16px}
-    .spin{width:48px;height:48px;border:4px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:s 0.8s linear infinite}
-    @keyframes s{to{transform:rotate(360deg)}}</style></head>
-    <body><div class="spin"></div><p style="color:#64748b;font-size:14px">Génération de la synthèse IA…</p></body></html>`);
-  win.document.close();
-
   const score  = globalScore(qs);
   const themes = byTheme(qs);
   const today  = dateSession || new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
@@ -405,7 +395,7 @@ Ton sobre et institutionnel. Environ 400 mots. Pas de markdown. Texte pur avec t
   }
 
   // Générer le HTML du PDF dans la fenêtre déjà ouverte
-  exportPDF(atelier, partenaire, animateur, participants, dateSession, qs, niveauPublic, narratif, win);
+  exportPDF(atelier, partenaire, animateur, participants, dateSession, qs, niveauPublic, narratif, null);
 }
 
 // ── EXPORT CSV ────────────────────────────────────────────────────────────────
@@ -728,10 +718,18 @@ function telecharger() {
 </scr'+'ipt>
 </body></html>`;
 
-  const win = existingWin || window.open('','_blank');
-  if (!win) { alert("Autorisez les popups pour cet outil."); return; }
-  win.document.write(html);
-  win.document.close();
+  // Téléchargement blob — pas de window.open (bloqué sur Chrome mobile)
+  if (existingWin) { try { existingWin.close(); } catch(e){} }
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  const safeName = (atelier||'Rapport').replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,40);
+  a.download = safeName + '_rapport.html';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
 }
 
 // ── EXPORT B — SYNTHÈSE NARRATIVE RTF (statique, sans API) ───────────────────
