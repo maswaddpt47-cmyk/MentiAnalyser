@@ -560,24 +560,27 @@ body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;background:#fff;font-
 .btn-print{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3)!important}
 .btn-close{background:rgba(239,68,68,0.3);color:#fecaca}
 .toolbar span{color:#93c5fd;font-size:12px;flex:1}
-.hd{background:linear-gradient(120deg,#1e3a8a 0%,#2563eb 100%);color:#fff;padding:28px 36px 24px;margin-bottom:28px}
-.hd h1{font-size:24px;font-weight:900;margin-bottom:5px}
-.hd .meta{font-size:12px;color:#bfdbfe;margin-top:3px}
-.sec{padding:0 36px;margin-bottom:28px}
-.sec h2{font-size:15px;font-weight:800;color:#1e40af;margin-bottom:14px;padding-bottom:7px;border-bottom:2px solid #dbeafe;display:flex;align-items:center;gap:8px}
+.hd{background:linear-gradient(120deg,#1e3a8a 0%,#2563eb 100%);color:#fff;padding:18px 30px 16px;margin-bottom:16px}
+.hd h1{font-size:21px;font-weight:900;margin-bottom:4px}
+.hd .meta{font-size:11px;color:#bfdbfe;margin-top:3px}
+.sec{padding:0 30px;margin-bottom:16px;page-break-inside:avoid}
+.row3,.stat-grid,svg{page-break-inside:avoid}
+@media print{ @page{margin:8mm 12mm;size:A4} }
+.sec h2{font-size:14px;font-weight:800;color:#1e40af;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid #dbeafe;display:flex;align-items:center;gap:8px}
 .row3{display:grid;grid-template-columns:140px 1fr 140px;gap:20px;align-items:center}
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 36px;margin-bottom:28px}
-.sc{border-radius:14px;padding:18px 14px;text-align:center;border:1px solid #e2e8f0}
-.sc .v{font-size:38px;font-weight:900;line-height:1}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 30px;margin-bottom:16px}
+.sc{border-radius:12px;padding:12px 12px;text-align:center;border:1px solid #e2e8f0}
+.sc .v{font-size:30px;font-weight:900;line-height:1}
 .sc .l{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-top:5px}
 table{width:100%;border-collapse:collapse}
 th{background:#1e3a8a;color:#fff;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;text-align:left;font-weight:700}
 td{border-bottom:1px solid #f1f5f9;vertical-align:middle}
-ul{padding-left:18px;line-height:1.8;font-size:12.5px}
+tr{page-break-inside:avoid}
+ul{padding-left:18px;line-height:1.5;font-size:12px}
 .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:11px}
 .leg{display:flex;align-items:center;gap:5px}
 .dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
-.ft{padding:16px 36px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center;margin-top:32px}
+.ft{padding:10px 30px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center;margin-top:16px}
 </style></head><body>
 
 <div class="toolbar">
@@ -632,7 +635,7 @@ ul{padding-left:18px;line-height:1.8;font-size:12.5px}
 
 ${(()=>{
   // ── Radar SVG
-  const cx=220, cy=200, R=155, n=themes.length;
+  const cx=200, cy=170, R=125, n=themes.length;
   if(n<3) return '';
   const angleOffset=-Math.PI/2;
   const pt=(i,r)=>{
@@ -674,15 +677,15 @@ ${(()=>{
   return `<div class="sec">
   <h2>🕸 Vue radar — compétences par thème</h2>
   <div style="display:flex;justify-content:center">
-  <svg width="440" height="400" viewBox="0 0 440 400" xmlns="http://www.w3.org/2000/svg">
+  <svg width="400" height="330" viewBox="0 0 400 330" xmlns="http://www.w3.org/2000/svg">
     ${grids}${axes}
     <polygon points="${fullPts}" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 3"/>
     <polygon points="${dataPts}" fill="rgba(59,130,246,0.15)" stroke="#2563eb" stroke-width="2.5"/>
     ${vals}${labels}${ticks}
-    <rect x="20" y="370" width="12" height="12" rx="3" fill="rgba(59,130,246,0.25)" stroke="#2563eb" stroke-width="1.5"/>
-    <text x="38" y="380" font-size="10" fill="#475569" font-family="Arial">Classe</text>
-    <line x1="80" y1="376" x2="92" y2="376" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="3 2"/>
-    <text x="98" y="380" font-size="10" fill="#475569" font-family="Arial">Objectif 100%</text>
+    <rect x="20" y="310" width="12" height="12" rx="3" fill="rgba(59,130,246,0.25)" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="38" y="320" font-size="10" fill="#475569" font-family="Arial">Classe</text>
+    <line x1="80" y1="316" x2="92" y2="316" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="3 2"/>
+    <text x="98" y="320" font-size="10" fill="#475569" font-family="Arial">Objectif 100%</text>
   </svg>
   </div>
 </div>`;
