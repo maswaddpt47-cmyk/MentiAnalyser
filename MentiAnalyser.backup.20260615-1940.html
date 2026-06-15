@@ -2410,8 +2410,13 @@ function App() {
           e('div',{style:{fontSize:56,marginBottom:16}},"📊"),
           e('div',{style:{fontSize:20,fontWeight:800,color:"#1e293b",marginBottom:8}},
             "Aucune donnée à afficher"),
-          e('div',{style:{fontSize:14,color:"#64748b",maxWidth:380,margin:"0 auto"}},
-            "Utilisez ☰ Menu → Importer pour charger vos captures Mentimeter.")
+          e('div',{style:{fontSize:14,color:"#64748b",marginBottom:24,maxWidth:380,margin:"0 auto 24px"}},
+            "Importez vos captures PNG, JPEG, PDF ou une archive ZIP depuis Mentimeter pour commencer l'analyse."),
+          e('button',{
+            onClick:()=>setShowUpload(true),
+            style:{background:"#1e40af",color:"#fff",border:"none",borderRadius:12,
+              padding:"12px 28px",fontSize:14,fontWeight:700,cursor:"pointer"}
+          },"📤 Importer des fichiers")
         )
       : e('div',{className:"main-content",style:{padding:"0 32px 32px"}},
           tab==="themes"      ? vueThemes      :
