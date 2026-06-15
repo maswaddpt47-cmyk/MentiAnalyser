@@ -59,4 +59,4 @@ git commit -m "feat: ajout du filtre par catégorie dans le tableau de bord"
 2. Créer le backup daté du/des fichier(s) sensible(s) concerné(s)
 3. Effectuer les modifications
 4. Committer chaque modification séparément avec le bon préfixe
-5. Pusher sur la branche de travail en cours
+5. Pusher sur `main` : `git push origin main`
