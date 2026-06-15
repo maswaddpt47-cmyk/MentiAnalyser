@@ -17,34 +17,6 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#eef2ff 0%,#f8fafc 55%,#f0fdf4 100%);min-height:100vh;color:#1e293b}
 button{cursor:pointer;font-family:inherit}
-
-/* ── RESPONSIVE MOBILE ─────────────────────────────── */
-@media (max-width: 640px) {
-  /* Bandeau header */
-  .header-inner { flex-direction: column !important; gap: 12px !important; padding: 14px 16px !important; }
-  .header-fields { flex-wrap: wrap !important; gap: 8px !important; }
-  .header-fields input, .header-fields select { min-width: 0 !important; width: 100% !important; font-size: 12px !important; }
-
-  /* Grille menu boutons : 2 colonnes sur mobile */
-  .menu-grid { grid-template-columns: 1fr 1fr !important; min-width: 0 !important; width: 100% !important; }
-
-  /* Tuiles KPI : 2 par ligne */
-  .stat-cards-grid { grid-template-columns: 1fr 1fr !important; }
-
-  /* Onglets : défilement horizontal */
-  .tabs-bar { overflow-x: auto !important; width: 100% !important; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .tabs-bar::-webkit-scrollbar { display: none; }
-  .tabs-bar button { white-space: nowrap !important; font-size: 12px !important; padding: 7px 12px !important; }
-
-  /* Bloc sticky padding réduit */
-  .sticky-top-block { padding: 10px 12px 0 !important; }
-
-  /* Contenu principal */
-  .main-content { padding: 0 10px 24px !important; }
-
-  /* Grilles 2 colonnes → 1 colonne */
-  .grid-2col { grid-template-columns: 1fr !important; }
-}
 @media print {
   body{background:#fff !important}
   .no-print{display:none !important}
@@ -1276,7 +1248,7 @@ function App() {
   }}, ...children);
 
   // ── HEADER
-  const header = e('div', { className:"header-inner", style:{
+  const header = e('div', { style:{
     background:"linear-gradient(120deg,#1e3a8a 0%,#2563eb 100%)",
     padding:"20px 32px", display:"flex", justifyContent:"space-between",
     alignItems:"flex-start", flexWrap:"wrap", gap:16,
@@ -1288,7 +1260,7 @@ function App() {
           "Conseil Départemental du Lot-et-Garonne · MentiAnalyser"),
         e('h1', { style:{color:"#fff",fontSize:20,fontWeight:800,margin:0} }, "Analyse Mentimeter")
       ),
-      e('div', { className:"header-fields", style:{display:"flex", gap:12, flexWrap:"wrap"} },
+      e('div', { style:{display:"flex", gap:12, flexWrap:"wrap"} },
         // Thème de l'atelier
         e('div', null,
           fieldLabel("Thème de l'atelier"),
@@ -1436,7 +1408,7 @@ function App() {
       )
     ),
     // Droite : boutons export (rétractable)
-    e('div', { className:"no-print menu-grid", style:{display: showMenu ? "grid" : "none", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, alignSelf:"center"} },
+    e('div', { style:{display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, alignSelf:"center", minWidth:400, display: showMenu ? "grid" : "none"}, className:"no-print" },
       e('button', { onClick:()=>{ setShowUpload(true); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📤 Importer PNG/ZIP"),
@@ -1720,9 +1692,9 @@ function App() {
   );
 
   // ── STAT CARDS
-  const statCards = e('div', { className:"stat-cards-grid", style:{
+  const statCards = e('div', { style:{
     display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(165px,1fr))",
-    gap:12, marginBottom:16,
+    gap:12, marginBottom:24,
   }},
     e(StatCard,{label:"Score global",  value:`${score}%`,  sub:"moyenne de la classe",  accent:gc(score),   shadow:`0 4px 20px rgba(37,99,235,0.18)`}),
     e(StatCard,{label:"Acquis",        value:acquis,        sub:`≥ ${seuilHaut}% · ${questionsData.length>0?Math.round(acquis/questionsData.length*100):0}% des questions`, accent:"#16a34a", shadow:`0 4px 20px rgba(22,163,74,0.18)`}),
@@ -1732,10 +1704,9 @@ function App() {
   );
 
   // ── TABS
-  const tabs = e('div', { className:"tabs-bar", style:{
-    display:"flex", gap:3, marginBottom:16,
+  const tabs = e('div', { style:{
+    display:"flex", gap:3, marginBottom:20,
     background:"#e2e8f0", borderRadius:12, padding:4, width:"fit-content",
-    maxWidth:"100%",
   }},
     ...([["themes","Par thème"],["questions","Par question"],["radar","Radar"],["stats","Jauge & Dist."],["progression","Progression"]]).map(([key,lbl]) =>
       e('button', { key, onClick:()=>setTab(key), style:{
@@ -1750,7 +1721,7 @@ function App() {
   );
 
   // ── VUE THÈMES
-  const vueThemes = e('div', { className:"grid-2col", style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20} },
+  const vueThemes = e('div', { style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20} },
     // Graphe
     panel([
       e('h2',{style:{margin:"0 0 16px",fontSize:14,fontWeight:700}},"Taux de réussite par thème"),
@@ -1984,7 +1955,7 @@ function App() {
   ]);
 
   // ── VUE JAUGE + PIE CHART
-  const vueGaugePie = e('div',{className:"grid-2col",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginTop:20}},
+  const vueGaugePie = e('div',{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginTop:20}},
     panel([
       e('h2',{style:{margin:"0 0 16px",fontSize:14,fontWeight:700}},"Score global de la session"),
       questionsData.length === 0
@@ -2086,7 +2057,7 @@ function App() {
     // ── Bandeau freezé (header + tuiles + onglets)
     e('div',{style:{position:"sticky",top:0,zIndex:200,boxShadow:"0 4px 16px rgba(30,58,138,0.15)"}},
       header,
-      e('div',{className:"sticky-top-block",style:{background:"#f1f5fb",padding:"16px 32px 0",overflowX:"hidden"}},
+      e('div',{style:{background:"#f1f5fb",padding:"16px 32px 0"}},
         statCards, tabs,
       )
     ),
@@ -2356,7 +2327,7 @@ function App() {
               padding:"12px 28px",fontSize:14,fontWeight:700,cursor:"pointer"}
           },"📤 Importer des fichiers")
         )
-      : e('div',{className:"main-content",style:{padding:"0 32px 32px"}},
+      : e('div',{style:{padding:"0 32px 32px"}},
           tab==="themes"      ? vueThemes      :
           tab==="questions"   ? vueQuestions   :
           tab==="stats"       ? vueGaugePie    :
