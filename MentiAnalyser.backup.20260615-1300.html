@@ -1128,7 +1128,6 @@ function App() {
   const [seuilBas,   setSeuilBas]   = useState(60);
   const [seuilHaut,  setSeuilHaut]  = useState(80);
   const [showSeuils, setShowSeuils] = useState(false);
-  const [showMenu,   setShowMenu]   = useState(false);
   const gc = t => getColor(t, seuilBas, seuilHaut);
   const gl = t => getLevel(t, seuilBas, seuilHaut);
 
@@ -1343,19 +1342,11 @@ function App() {
           )
         ),
       ),
-      e('div', { style:{display:"flex",alignItems:"center",gap:8,marginTop:2} },
-        e('div', { style:{color:"#bfdbfe",fontSize:12} },
-          `${questionsData.length} questions · ${participants} élèves · Cliquer pour modifier les champs`),
-        e('button', {
-          onClick:()=>setShowMenu(m=>!m),
-          className:"no-print",
-          title: showMenu ? "Masquer le menu" : "Afficher le menu",
-          style:{background:"rgba(255,255,255,0.18)",color:"#fff",border:"1px solid rgba(255,255,255,0.35)",borderRadius:8,padding:"3px 10px",fontWeight:700,fontSize:13,cursor:"pointer",whiteSpace:"nowrap"}
-        }, showMenu ? "▲ Menu" : "▼ Menu")
-      )
+      e('div', { style:{color:"#bfdbfe",fontSize:12,marginTop:2} },
+        `${questionsData.length} questions · ${participants} élèves · Cliquer pour modifier les champs`)
     ),
-    // Droite : boutons export (rétractable)
-    e('div', { style:{display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, alignSelf:"center", minWidth:400, display: showMenu ? "grid" : "none"}, className:"no-print" },
+    // Droite : boutons export
+    e('div', { style:{display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, alignSelf:"center", minWidth:400}, className:"no-print" },
       e('button', { onClick:()=>setShowUpload(true),
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📤 Importer PNG/ZIP"),
