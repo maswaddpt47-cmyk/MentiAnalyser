@@ -278,9 +278,8 @@ function exportJSON(atelier, partenaire, animateur, participants, dateSession, q
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
-  const date = (dateSession || new Date().toISOString().slice(0,10)).replace(/[^0-9\-]/g,'');
-  const safeAtelier = (atelier||"Atelier").replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,30);
-  a.href = url; a.download = `Mentimeter_${date}_${safeAtelier}.json`;
+  const safe = (atelier||"Session").replace(/[^a-zA-Z0-9_\-]/g,'_').slice(0,40);
+  a.href = url; a.download = `${safe}.json`;
   a.style.display = "none";
   document.body.appendChild(a); a.click();
   setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
