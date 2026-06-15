@@ -1356,45 +1356,45 @@ function App() {
     ),
     // Droite : boutons export (rétractable)
     e('div', { style:{display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, alignSelf:"center", minWidth:400, display: showMenu ? "grid" : "none"}, className:"no-print" },
-      e('button', { onClick:()=>setShowUpload(true),
+      e('button', { onClick:()=>{ setShowUpload(true); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📤 Importer PNG/ZIP"),
-      e('button', { onClick:()=>exportJSON(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic),
+      e('button', { onClick:()=>{ exportJSON(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "💾 Export JSON"),
       e('button', {
-        onClick:()=>{ const label=atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:''); setSessions(prev=>[...prev,{id:Date.now(),label,atelier,partenaire,dateSession,participants,questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData)}]); setShowCompare(true); },
+        onClick:()=>{ const label=atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:''); setSessions(prev=>[...prev,{id:Date.now(),label,atelier,partenaire,dateSession,participants,questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData)}]); setShowCompare(true); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, sessions.length>0?`📊 Comparer (${sessions.length+1})`:"📌 Archiver"),
       e('button', {
-        onClick:()=>{ if(!confirm("Réinitialiser toutes les données et les champs ?")) return; setAtelier(""); setPartenaire(""); setAnimateur(""); setParticipants(""); setDateSession(""); setNiveauPublic(""); setQuestionsData([]); setActiveTheme(null); setTab("themes"); setSessions([]); setEditingId(null); },
+        onClick:()=>{ if(!confirm("Réinitialiser toutes les données et les champs ?")) return; setAtelier(""); setPartenaire(""); setAnimateur(""); setParticipants(""); setDateSession(""); setNiveauPublic(""); setQuestionsData([]); setActiveTheme(null); setTab("themes"); setSessions([]); setEditingId(null); setShowMenu(false); },
         style:{background:"rgba(239,68,68,0.25)",color:"#fecaca",border:"1px solid rgba(239,68,68,0.4)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "🔄 Réinitialiser"),
-      e('button', { onClick:()=>document.getElementById('json-import-input').click(),
+      e('button', { onClick:()=>{ document.getElementById('json-import-input').click(); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📂 Import JSON"),
-      e('button', { onClick:()=>exportCSV(atelier,partenaire,questionsData),
+      e('button', { onClick:()=>{ exportCSV(atelier,partenaire,questionsData); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📥 Export CSV"),
-      e('button', { onClick:()=>setShowSeuils(s=>!s),
+      e('button', { onClick:()=>{ setShowSeuils(s=>!s); setShowMenu(false); },
         style:{background:showSeuils?"rgba(255,255,255,0.3)":"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, `⚙️ Seuils ${seuilBas}/${seuilHaut}`),
-      e('button', { onClick:()=>envoyerEmail(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData),
+      e('button', { onClick:()=>{ envoyerEmail(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "✉️ Email"),
-      e('button', { onClick:()=>exportPPTX(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData),
+      e('button', { onClick:()=>{ exportPPTX(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📑 Export PPTX"),
       e('button', {
-        onClick:()=>{ if(questionsData.length>0){setPresentIdx(0);setShowPresent(true);} else alert("Aucune question à présenter."); },
+        onClick:()=>{ if(questionsData.length>0){setPresentIdx(0);setShowPresent(true);} else alert("Aucune question à présenter."); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "🎬 Présenter"),
       e('button', {
-        onClick:()=>exportPDF(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic),
+        onClick:()=>{ exportPDF(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic); setShowMenu(false); },
         style:{background:"#fff",color:"#1e40af",border:"none",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:"0 2px 10px rgba(0,0,0,0.18)"}
       }, "📊 Export PDF"),
       e('button', {
-        onClick:()=>exportPDFAvecIA(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData,apiKey),
+        onClick:()=>{ exportPDFAvecIA(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData,apiKey); setShowMenu(false); },
         disabled:!apiKey,
         title:apiKey?"":"Entrez votre mot de passe IA pour activer",
         style:{background:apiKey?"#7c3aed":"#94a3b8",color:"#fff",border:"none",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:apiKey?"0 2px 10px rgba(0,0,0,0.2)":"none",cursor:apiKey?"pointer":"not-allowed"}
