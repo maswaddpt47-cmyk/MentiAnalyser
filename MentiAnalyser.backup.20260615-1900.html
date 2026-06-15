@@ -272,9 +272,9 @@ function rtfRow(cells, widths, isHeader=false) {
 const LS_KEY = "mentianalyser_session";
 
 // ── EXPORT JSON ───────────────────────────────────────────────────────────────
-function exportJSON(atelier, partenaire, animateur, participants, dateSession, qs, niveauPublic="", archives=[]) {
+function exportJSON(atelier, partenaire, animateur, participants, dateSession, qs, niveauPublic="") {
   const payload = { atelier, partenaire, animateur, participants, dateSession, niveauPublic, questions: qs,
-    archives, _version: 2, _exportedAt: new Date().toISOString() };
+    _version: 1, _exportedAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
@@ -1203,15 +1203,7 @@ function App() {
   const [showReview,    setShowReview]     = useState(false);
   const [dragging,      setDragging]       = useState(false);
   const [editingId,     setEditingId]      = useState(null);
-  const [sessions, setSessions] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("menti_archives") || "[]"); }
-    catch { return []; }
-  });
-  // Sync localStorage à chaque changement d'archives
-  React.useEffect(() => {
-    try { localStorage.setItem("menti_archives", JSON.stringify(sessions)); }
-    catch {}
-  }, [sessions]);
+  const [sessions,      setSessions]       = useState([]);
   const [showCompare,   setShowCompare]    = useState(false);
   const [qSearch,       setQSearch]        = useState("");
   const [qSort,         setQSort]          = useState({key:"taux",dir:"asc"});
@@ -1458,7 +1450,7 @@ function App() {
       e('button', { onClick:()=>{ setShowUpload(true); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📤 Importer PNG/ZIP"),
-      e('button', { onClick:()=>{ exportJSON(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic,sessions); setShowMenu(false); },
+      e('button', { onClick:()=>{ exportJSON(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "💾 Export JSON"),
       e('button', {
@@ -1469,10 +1461,6 @@ function App() {
         onClick:()=>{ if(!confirm("Réinitialiser toutes les données et les champs ?")) return; setAtelier(""); setPartenaire(""); setAnimateur(""); setParticipants(""); setDateSession(""); setNiveauPublic(""); setQuestionsData([]); setActiveTheme(null); setTab("themes"); setSessions([]); setEditingId(null); setShowMenu(false); },
         style:{background:"rgba(239,68,68,0.25)",color:"#fecaca",border:"1px solid rgba(239,68,68,0.4)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "🔄 Réinitialiser"),
-      e('button', {
-        onClick:()=>{ if(!confirm("Vider toutes les archives de sessions ?")) return; setSessions([]); localStorage.removeItem("menti_archives"); setShowMenu(false); },
-        style:{background:"rgba(239,68,68,0.15)",color:"#fca5a5",border:"1px solid rgba(239,68,68,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
-      }, "🗑️ Vider archives"),
       e('button', { onClick:()=>{ document.getElementById('json-import-input').click(); setShowMenu(false); },
         style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
       }, "📂 Import JSON"),
@@ -2100,8 +2088,6 @@ function App() {
             if (data.dateSession)  setDateSession(data.dateSession);
             if (data.niveauPublic) setNiveauPublic(data.niveauPublic);
             setQuestionsData(data.questions);
-            if (Array.isArray(data.archives) && data.archives.length > 0)
-              setSessions(data.archives);
             ev.target.value = "";
           }
         });
