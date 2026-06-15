@@ -20,33 +20,24 @@ button{cursor:pointer;font-family:inherit}
 
 /* ── RESPONSIVE MOBILE ─────────────────────────────── */
 @media (max-width: 640px) {
-  /* Suppression du freeze sur mobile */
-  .sticky-wrapper { position: static !important; box-shadow: none !important; }
+  /* Bandeau header */
+  .header-inner { flex-direction: column !important; gap: 12px !important; padding: 14px 16px !important; }
+  .header-fields { flex-wrap: wrap !important; gap: 8px !important; }
+  .header-fields input, .header-fields select { min-width: 0 !important; width: 100% !important; font-size: 12px !important; }
 
-  /* Header plus compact */
-  .header-inner { flex-direction: column !important; gap: 8px !important; padding: 10px 14px !important; }
-  .header-inner h1 { font-size: 16px !important; }
-  .header-inner .conseil-label { display: none; }
-  .header-fields { flex-direction: column !important; gap: 6px !important; }
-  .header-fields input, .header-fields select { font-size: 12px !important; padding: 3px 8px !important; }
-  .mdp-row { flex-wrap: wrap !important; gap: 6px !important; }
-
-  /* Grille menu boutons : 2 colonnes */
+  /* Grille menu boutons : 2 colonnes sur mobile */
   .menu-grid { grid-template-columns: 1fr 1fr !important; min-width: 0 !important; width: 100% !important; }
 
-  /* Tuiles KPI : 2 par ligne, compactes */
-  .stat-cards-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
-  .stat-cards-grid > div { padding: 10px 12px !important; border-radius: 10px !important; }
-  .stat-cards-grid > div > div:first-child { font-size: 22px !important; }
+  /* Tuiles KPI : 2 par ligne */
+  .stat-cards-grid { grid-template-columns: 1fr 1fr !important; }
 
-  /* Onglets : scroll horizontal */
-  .tabs-bar { overflow-x: auto !important; width: 100% !important; max-width: 100% !important;
-    -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  /* Onglets : défilement horizontal */
+  .tabs-bar { overflow-x: auto !important; width: 100% !important; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .tabs-bar::-webkit-scrollbar { display: none; }
-  .tabs-bar button { white-space: nowrap !important; font-size: 11px !important; padding: 6px 10px !important; }
+  .tabs-bar button { white-space: nowrap !important; font-size: 12px !important; padding: 7px 12px !important; }
 
   /* Bloc sticky padding réduit */
-  .sticky-top-block { padding: 8px 12px 0 !important; }
+  .sticky-top-block { padding: 10px 12px 0 !important; }
 
   /* Contenu principal */
   .main-content { padding: 0 10px 24px !important; }
@@ -1293,7 +1284,7 @@ function App() {
     // Gauche : titre fixe + 3 champs éditables
     e('div', { style:{display:"flex", flexDirection:"column", gap:10} },
       e('div', null,
-        e('div', { className:"conseil-label", style:{fontSize:10,color:"#93c5fd",letterSpacing:2.5,textTransform:"uppercase",marginBottom:4} },
+        e('div', { style:{fontSize:10,color:"#93c5fd",letterSpacing:2.5,textTransform:"uppercase",marginBottom:4} },
           "Conseil Départemental du Lot-et-Garonne · MentiAnalyser"),
         e('h1', { style:{color:"#fff",fontSize:20,fontWeight:800,margin:0} }, "Analyse Mentimeter")
       ),
@@ -2093,7 +2084,7 @@ function App() {
       }
     }),
     // ── Bandeau freezé (header + tuiles + onglets)
-    e('div',{className:"sticky-wrapper",style:{position:"sticky",top:0,zIndex:200,boxShadow:"0 4px 16px rgba(30,58,138,0.15)"}},
+    e('div',{style:{position:"sticky",top:0,zIndex:200,boxShadow:"0 4px 16px rgba(30,58,138,0.15)"}},
       header,
       e('div',{className:"sticky-top-block",style:{background:"#f1f5fb",padding:"16px 32px 0",overflowX:"hidden"}},
         statCards, tabs,
