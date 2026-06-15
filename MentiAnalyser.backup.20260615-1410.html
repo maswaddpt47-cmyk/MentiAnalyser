@@ -932,32 +932,20 @@ function Badge({ taux }) {
 
 // ── STAT CARD ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, accent, shadow }) {
-  const col = accent || "#2563eb";
-  // Couleur de fond teinté : hex → rgba 8%
-  const bg = col.startsWith("#")
-    ? `${col}14`
-    : col.replace("rgb(","rgba(").replace(")",",0.08)");
   return React.createElement('div', {
     style: {
-      background: bg,
-      borderRadius: 14,
-      padding: "16px 20px",
-      border: `1.5px solid ${col}30`,
-      borderLeft: `5px solid ${col}`,
-      boxShadow: `0 2px 12px ${col}22`,
-      transition: "transform .15s, box-shadow .15s",
-      cursor: "default",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      textAlign: "center",
+      background:"#fff", borderRadius:16,
+      padding:"18px 22px", border:"1px solid #e2e8f0",
+      boxShadow: shadow || `0 4px 18px rgba(0,0,0,0.06)`,
+      transition:"transform .15s, box-shadow .15s",
+      cursor:"default",
     },
-    onMouseEnter: e => { e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow=`0 8px 24px ${col}40`; },
-    onMouseLeave: e => { e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=`0 2px 12px ${col}22`; },
+    onMouseEnter: e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow=shadow?shadow.replace("0.18","0.32"):`0 8px 24px rgba(0,0,0,0.1)`; },
+    onMouseLeave: e => { e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=shadow||`0 4px 18px rgba(0,0,0,0.06)`; },
   },
-    React.createElement('div', { style:{fontSize:28,fontWeight:900,color:col,lineHeight:1,marginBottom:4} }, value),
-    React.createElement('div', { style:{fontSize:11,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom: sub?3:0} }, label),
-    sub && React.createElement('div', { style:{fontSize:11,color:col,fontWeight:600,opacity:0.8} }, sub)
+    React.createElement('div', { style:{fontSize:10,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1.2,marginBottom:8} }, label),
+    React.createElement('div', { style:{fontSize:32,fontWeight:900,color:accent||"#1e293b",lineHeight:1} }, value),
+    sub && React.createElement('div', { style:{fontSize:11,color:"#64748b",marginTop:5} }, sub)
   );
 }
 
