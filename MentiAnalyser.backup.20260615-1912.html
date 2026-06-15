@@ -31,8 +31,8 @@ button{cursor:pointer;font-family:inherit}
   .header-fields input, .header-fields select { font-size: 12px !important; padding: 3px 8px !important; }
   .mdp-row { flex-wrap: wrap !important; gap: 6px !important; }
 
-  /* Décalage contenu quand drawer épinglé (PC uniquement) */
-  .content-shift { margin-right: 280px; transition: margin-right 0.28s cubic-bezier(.4,0,.2,1); }
+  /* Grille menu boutons : 2 colonnes */
+  .menu-grid { grid-template-columns: 1fr 1fr !important; min-width: 0 !important; width: 100% !important; }
 
   /* Tuiles KPI : 2 par ligne, compactes */
   .stat-cards-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
@@ -1184,7 +1184,6 @@ function App() {
   const [seuilHaut,  setSeuilHaut]  = useState(80);
   const [showSeuils, setShowSeuils] = useState(false);
   const [showMenu,   setShowMenu]   = useState(false);
-  const [menuPinned, setMenuPinned] = useState(false);
   const gc = t => getColor(t, seuilBas, seuilHaut);
   const gl = t => getLevel(t, seuilBas, seuilHaut);
 
@@ -1449,97 +1448,60 @@ function App() {
         e('button', {
           onClick:()=>setShowMenu(m=>!m),
           className:"no-print",
-          title:"Ouvrir le menu",
-          style:{background:"rgba(255,255,255,0.18)",color:"#fff",border:"1px solid rgba(255,255,255,0.35)",borderRadius:8,padding:"4px 12px",fontWeight:700,fontSize:13,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}
-        }, "☰ Menu")
+          title: showMenu ? "Masquer le menu" : "Afficher le menu",
+          style:{background:"rgba(255,255,255,0.18)",color:"#fff",border:"1px solid rgba(255,255,255,0.35)",borderRadius:8,padding:"3px 10px",fontWeight:700,fontSize:13,cursor:"pointer",whiteSpace:"nowrap"}
+        }, showMenu ? "▲ Menu" : "▼ Menu")
       )
     ),
-
-    // ── DRAWER LATÉRAL
-    showMenu && !menuPinned && e('div',{
-      className:"no-print",
-      onClick:()=>setShowMenu(false),
-      style:{position:"fixed",inset:0,background:"rgba(15,23,42,0.35)",zIndex:300,backdropFilter:"blur(2px)"}
-    }),
-    e('div',{
-      className:"no-print",
-      style:{
-        position:"fixed", top:0, right:0, bottom:0,
-        width:280, zIndex:301,
-        background:"#fff",
-        boxShadow:"-4px 0 32px rgba(30,58,138,0.18)",
-        transform: showMenu||menuPinned ? "translateX(0)" : "translateX(100%)",
-        transition:"transform 0.28s cubic-bezier(.4,0,.2,1)",
-        display:"flex", flexDirection:"column",
-        overflowY:"auto",
-      }
-    },
-      // En-tête drawer
-      e('div',{style:{background:"linear-gradient(120deg,#1e3a8a,#2563eb)",padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}},
-        e('span',{style:{color:"#fff",fontWeight:800,fontSize:15}},"⚡ Actions"),
-        e('div',{style:{display:"flex",gap:8,alignItems:"center"}},
-          e('button',{
-            onClick:()=>setMenuPinned(p=>!p),
-            title: menuPinned ? "Désépingler" : "Épingler le menu",
-            style:{background:menuPinned?"#fff":"rgba(255,255,255,0.2)",color:menuPinned?"#1e40af":"#fff",border:"none",borderRadius:7,padding:"4px 10px",fontWeight:700,fontSize:12,cursor:"pointer"}
-          }, menuPinned ? "📌 Épinglé" : "📌 Épingler"),
-          e('button',{
-            onClick:()=>{ setShowMenu(false); if(menuPinned) setMenuPinned(false); },
-            style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"none",borderRadius:7,padding:"4px 9px",fontSize:16,cursor:"pointer",lineHeight:1}
-          },"✕")
-        )
-      ),
-      // Sections
-      ...[
-        { label:"📥 Importer", color:"#2563eb", items:[
-          { icon:"📤", txt:"Importer PNG/ZIP",  fn:()=>{ setShowUpload(true); if(!menuPinned) setShowMenu(false); } },
-          { icon:"📂", txt:"Import JSON",       fn:()=>{ document.getElementById('json-import-input').click(); if(!menuPinned) setShowMenu(false); } },
-        ]},
-        { label:"📤 Exporter", color:"#0891b2", items:[
-          { icon:"💾", txt:"Export JSON",       fn:()=>{ exportJSON(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic,sessions); if(!menuPinned) setShowMenu(false); } },
-          { icon:"📥", txt:"Export CSV",        fn:()=>{ exportCSV(atelier,partenaire,questionsData); if(!menuPinned) setShowMenu(false); } },
-          { icon:"📑", txt:"Export PPTX",       fn:()=>{ exportPPTX(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData); if(!menuPinned) setShowMenu(false); } },
-          { icon:"📊", txt:"Export PDF",        fn:()=>{ exportPDF(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic); if(!menuPinned) setShowMenu(false); } },
-          { icon:"📝", txt:"PDF + IA",          fn:()=>{ exportPDFAvecIA(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData,apiKey); if(!menuPinned) setShowMenu(false); }, disabled:!apiKey, title:apiKey?"":"Mot de passe IA requis" },
-          { icon:"✉️", txt:"Email",              fn:()=>{ envoyerEmail(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData); if(!menuPinned) setShowMenu(false); } },
-        ]},
-        { label:"🎬 Présenter & Comparer", color:"#7c3aed", items:[
-          { icon:"🎬", txt:"Présenter",         fn:()=>{ if(questionsData.length>0){setPresentIdx(0);setShowPresent(true);}else alert("Aucune question."); if(!menuPinned) setShowMenu(false); } },
-          { icon:"📌", txt:sessions.length>0?`Comparer (${sessions.length+1})`:"Archiver", fn:()=>{ const label=atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:''); setSessions(prev=>[...prev,{id:Date.now(),label,atelier,partenaire,dateSession,participants,questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData)}]); setShowCompare(true); if(!menuPinned) setShowMenu(false); } },
-        ]},
-        { label:"⚙️ Gérer", color:"#64748b", items:[
-          { icon:"⚙️", txt:`Seuils ${seuilBas}/${seuilHaut}`, fn:()=>{ setShowSeuils(s=>!s); if(!menuPinned) setShowMenu(false); } },
-          { icon:"🗑️", txt:"Vider archives",   fn:()=>{ if(!confirm("Vider toutes les archives ?")) return; setSessions([]); localStorage.removeItem("menti_archives"); if(!menuPinned) setShowMenu(false); }, danger:true },
-          { icon:"🔄", txt:"Réinitialiser",    fn:()=>{ if(!confirm("Réinitialiser toutes les données ?")) return; setAtelier("");setPartenaire("");setAnimateur("");setParticipants("");setDateSession("");setNiveauPublic("");setQuestionsData([]);setActiveTheme(null);setTab("themes");setSessions([]);setEditingId(null); if(!menuPinned) setShowMenu(false); }, danger:true },
-        ]},
-      ].map(section =>
-        e('div',{key:section.label,style:{padding:"10px 14px 4px"}},
-          e('div',{style:{fontSize:10,fontWeight:800,color:section.color,textTransform:"uppercase",letterSpacing:1.5,marginBottom:6,paddingBottom:4,borderBottom:`2px solid ${section.color}22`}}, section.label),
-          e('div',{style:{display:"flex",flexDirection:"column",gap:3}},
-            ...section.items.map(item =>
-              e('button',{
-                key:item.txt, onClick:item.fn, disabled:item.disabled,
-                title:item.title||"",
-                style:{
-                  display:"flex", alignItems:"center", gap:10,
-                  background:item.disabled?"#f8fafc":"#fff",
-                  border:"1px solid #e2e8f0",
-                  borderLeft: item.danger ? "4px solid #ef4444" : `4px solid ${section.color}`,
-                  borderRadius:9, padding:"9px 12px",
-                  fontWeight:600, fontSize:13,
-                  color: item.disabled?"#94a3b8": item.danger?"#dc2626":"#1e293b",
-                  cursor:item.disabled?"not-allowed":"pointer",
-                  textAlign:"left", width:"100%",
-                  transition:"background .12s",
-                }
-              },
-                e('span',{style:{fontSize:16,lineHeight:1}},item.icon),
-                item.txt
-              )
-            )
-          )
-        )
-      )
+    // Droite : boutons export (rétractable)
+    e('div', { className:"no-print menu-grid", style:{display: showMenu ? "grid" : "none", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, alignSelf:"center"} },
+      e('button', { onClick:()=>{ setShowUpload(true); setShowMenu(false); },
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "📤 Importer PNG/ZIP"),
+      e('button', { onClick:()=>{ exportJSON(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic,sessions); setShowMenu(false); },
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "💾 Export JSON"),
+      e('button', {
+        onClick:()=>{ const label=atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:''); setSessions(prev=>[...prev,{id:Date.now(),label,atelier,partenaire,dateSession,participants,questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData)}]); setShowCompare(true); setShowMenu(false); },
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, sessions.length>0?`📊 Comparer (${sessions.length+1})`:"📌 Archiver"),
+      e('button', {
+        onClick:()=>{ if(!confirm("Réinitialiser toutes les données et les champs ?")) return; setAtelier(""); setPartenaire(""); setAnimateur(""); setParticipants(""); setDateSession(""); setNiveauPublic(""); setQuestionsData([]); setActiveTheme(null); setTab("themes"); setSessions([]); setEditingId(null); setShowMenu(false); },
+        style:{background:"rgba(239,68,68,0.25)",color:"#fecaca",border:"1px solid rgba(239,68,68,0.4)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "🔄 Réinitialiser"),
+      e('button', {
+        onClick:()=>{ if(!confirm("Vider toutes les archives de sessions ?")) return; setSessions([]); localStorage.removeItem("menti_archives"); setShowMenu(false); },
+        style:{background:"rgba(239,68,68,0.15)",color:"#fca5a5",border:"1px solid rgba(239,68,68,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "🗑️ Vider archives"),
+      e('button', { onClick:()=>{ document.getElementById('json-import-input').click(); setShowMenu(false); },
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "📂 Import JSON"),
+      e('button', { onClick:()=>{ exportCSV(atelier,partenaire,questionsData); setShowMenu(false); },
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "📥 Export CSV"),
+      e('button', { onClick:()=>{ setShowSeuils(s=>!s); setShowMenu(false); },
+        style:{background:showSeuils?"rgba(255,255,255,0.3)":"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, `⚙️ Seuils ${seuilBas}/${seuilHaut}`),
+      e('button', { onClick:()=>{ envoyerEmail(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData); setShowMenu(false); },
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "✉️ Email"),
+      e('button', { onClick:()=>{ exportPPTX(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData); setShowMenu(false); },
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "📑 Export PPTX"),
+      e('button', {
+        onClick:()=>{ if(questionsData.length>0){setPresentIdx(0);setShowPresent(true);} else alert("Aucune question à présenter."); setShowMenu(false); },
+        style:{background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+      }, "🎬 Présenter"),
+      e('button', {
+        onClick:()=>{ exportPDF(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic); setShowMenu(false); },
+        style:{background:"#fff",color:"#1e40af",border:"none",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:"0 2px 10px rgba(0,0,0,0.18)"}
+      }, "📊 Export PDF"),
+      e('button', {
+        onClick:()=>{ exportPDFAvecIA(atelier,partenaire,animateur,participants,dateSession,niveauPublic,questionsData,apiKey); setShowMenu(false); },
+        disabled:!apiKey,
+        title:apiKey?"":"Entrez votre mot de passe IA pour activer",
+        style:{background:apiKey?"#7c3aed":"#94a3b8",color:"#fff",border:"none",borderRadius:10,padding:"10px 12px",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6,boxShadow:apiKey?"0 2px 10px rgba(0,0,0,0.2)":"none",cursor:apiKey?"pointer":"not-allowed"}
+      }, "📝 PDF + IA"),
     ),
 
     // ── MODALE UPLOAD PNG — ANALYSE AUTOMATIQUE VIA API
@@ -2121,7 +2083,7 @@ function App() {
     )
   );
 
-  return e('div',{style:{minHeight:"100vh",marginRight: menuPinned ? 280 : 0, transition:"margin-right 0.28s cubic-bezier(.4,0,.2,1)"}},
+  return e('div',{style:{minHeight:"100vh"}},
     // Input caché pour import JSON
     e('input',{
       id:"json-import-input", type:"file", accept:".json,application/json",
