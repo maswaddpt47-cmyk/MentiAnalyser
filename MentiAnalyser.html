@@ -505,6 +505,56 @@ function exportCSV(atelier, partenaire, qs=questions) {
   setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
 }
 
+function exportComparisonReport(sessions, atelier) {
+  const allThemes = [...new Set(sessions.flatMap(s=>s.themes.map(t=>t.theme)))].sort();
+  const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
+  const head = sessions.map(s=>`<th style="text-align:center">${s.label}</th>`).join('');
+  const rows = allThemes.map(theme => {
+    const cells = sessions.map(s=>{
+      const t = s.themes.find(x=>x.theme===theme);
+      const pct = t?t.taux:null;
+      const col = pct==null?"#94a3b8":pct>=80?"#16a34a":pct>=60?"#d97706":"#dc2626";
+      return `<td style="text-align:center;font-weight:700;color:${col}">${pct!=null?pct+'%':'—'}</td>`;
+    }).join('');
+    return `<tr><td style="font-weight:600">${theme}</td>${cells}</tr>`;
+  }).join('');
+  const scoreRow = sessions.map(s=>{
+    const col = s.score>=80?"#16a34a":s.score>=60?"#d97706":"#dc2626";
+    return `<td style="text-align:center;font-size:18px;font-weight:900;color:${col}">${s.score}%</td>`;
+  }).join('');
+  const qRow = sessions.map(s=>`<td style="text-align:center;color:#94a3b8;font-size:11px">${s.questions.length} questions</td>`).join('');
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/>
+<title>Comparaison — ${atelier||'Analyse Mentimeter'}</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;padding:30px;margin:0}
+h1{font-size:20px;margin-bottom:4px}
+.sub{color:#64748b;font-size:12px;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12.5px}
+thead th{background:#f1f5f9;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#475569}
+tr.score-row td{border-top:2px solid #1e293b;border-bottom:2px solid #1e293b;padding:12px 10px}
+tr.q-row td{border-bottom:2px solid #e2e8f0}
+@media print{ body{padding:0} }
+</style></head><body>
+<h1>📊 Comparaison — ${atelier||'Analyse Mentimeter'}</h1>
+<div class="sub">Généré le ${today} · ${sessions.length} session(s) comparée(s) · Conseil Départemental du Lot-et-Garonne</div>
+<table>
+  <thead><tr><th>Thème</th>${head}</tr></thead>
+  <tbody>
+    <tr class="score-row"><td style="font-weight:800">SCORE GLOBAL</td>${scoreRow}</tr>
+    <tr class="q-row"><td></td>${qRow}</tr>
+    ${rows}
+  </tbody>
+</table>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { alert("Le navigateur a bloqué l'ouverture de la fenêtre. Autorisez les pop-ups pour ce site."); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>{ w.focus(); w.print(); }, 400);
+}
+
 // ── EXPORT A — HTML avec graphiques SVG → impression PDF ─────────────────────
 function exportPDF(atelier, partenaire, animateur, participants, dateSession, qs=[], niveauPublic="", narratif="", existingWin=null) {
   const themes = byTheme(qs), score = globalScore(qs);
@@ -2273,6 +2323,12 @@ function App() {
               style:{background:"#1e40af",color:"#fff",border:"none",borderRadius:8,
                 padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}
             },"＋ Ajouter session courante"),
+            e('button',{
+              onClick:()=>exportComparisonReport(allSessions, atelier),
+              disabled: allSessions.length===0,
+              style:{background:allSessions.length===0?"#cbd5e1":"#0f766e",color:"#fff",border:"none",borderRadius:8,
+                padding:"6px 12px",fontSize:12,fontWeight:700,cursor:allSessions.length===0?"not-allowed":"pointer"}
+            },"🖨️ Exporter rapport"),
             e('button',{onClick:()=>setShowCompare(false),
               style:{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8"}},"✕")
           )
