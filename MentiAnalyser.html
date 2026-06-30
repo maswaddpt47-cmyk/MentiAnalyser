@@ -506,47 +506,92 @@ function exportCSV(atelier, partenaire, qs=questions) {
 }
 
 function exportComparisonReport(sessions, atelier) {
+  const COMPARE_COLORS = ["#2563eb","#16a34a","#d97706","#dc2626","#7c3aed","#0891b2"];
   const allThemes = [...new Set(sessions.flatMap(s=>s.themes.map(t=>t.theme)))].sort();
   const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
-  const head = sessions.map(s=>`<th style="text-align:center">${s.label}</th>`).join('');
-  const rows = allThemes.map(theme => {
-    const cells = sessions.map(s=>{
-      const t = s.themes.find(x=>x.theme===theme);
-      const pct = t?t.taux:null;
-      const col = pct==null?"#94a3b8":pct>=80?"#16a34a":pct>=60?"#d97706":"#dc2626";
-      return `<td style="text-align:center;font-weight:700;color:${col}">${pct!=null?pct+'%':'—'}</td>`;
-    }).join('');
-    return `<tr><td style="font-weight:600">${theme}</td>${cells}</tr>`;
-  }).join('');
-  const scoreRow = sessions.map(s=>{
+
+  // ── Donuts de score par session
+  function donutSVG(score, color) {
+    const r=34, c=2*Math.PI*r, off=c*(1-score/100);
+    return `<svg width="92" height="92" viewBox="0 0 92 92">
+      <circle cx="46" cy="46" r="${r}" fill="none" stroke="#e2e8f0" stroke-width="9"/>
+      <circle cx="46" cy="46" r="${r}" fill="none" stroke="${color}" stroke-width="9"
+        stroke-dasharray="${c}" stroke-dashoffset="${off}" stroke-linecap="round"
+        transform="rotate(-90 46 46)"/>
+      <text x="46" y="51" text-anchor="middle" font-size="17" font-weight="900" fill="${color}"
+        font-family="Segoe UI,Arial,sans-serif">${score}%</text>
+    </svg>`;
+  }
+  const donutCards = sessions.map((s,si)=>{
     const col = s.score>=80?"#16a34a":s.score>=60?"#d97706":"#dc2626";
-    return `<td style="text-align:center;font-size:18px;font-weight:900;color:${col}">${s.score}%</td>`;
+    return `<div style="flex:1;min-width:140px;text-align:center;background:#f8fafc;
+      border:1.5px solid ${col}33;border-radius:14px;padding:14px 10px">
+      <div style="width:10px;height:10px;border-radius:3px;background:${COMPARE_COLORS[si%COMPARE_COLORS.length]};
+        display:inline-block;margin-right:5px"></div>
+      <span style="font-size:10.5px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.4px">${s.label}</span>
+      <div style="margin:8px 0 4px">${donutSVG(s.score, col)}</div>
+      <div style="font-size:10.5px;color:#94a3b8">${s.questions.length} questions</div>
+    </div>`;
   }).join('');
-  const qRow = sessions.map(s=>`<td style="text-align:center;color:#94a3b8;font-size:11px">${s.questions.length} questions</td>`).join('');
+
+  // ── Graphique SVG barres groupées par thème
+  const LBL=150, MAX=280, barH=13, gapBar=3, padTop=8, padBottom=10;
+  const groupH = sessions.length*(barH+gapBar)+padTop+padBottom;
+  let y=0;
+  const themeBlocks = allThemes.map(theme=>{
+    const bars = sessions.map((s,si)=>{
+      const t=s.themes.find(x=>x.theme===theme);
+      const pct=t?t.taux:0;
+      const bw=Math.max(Math.round(pct/100*MAX),2);
+      const yy = y+padTop+si*(barH+gapBar);
+      const col=COMPARE_COLORS[si%COMPARE_COLORS.length];
+      return `<rect x="${LBL}" y="${yy}" width="${bw}" height="${barH}" rx="4" fill="${col}" opacity="0.88"/>
+        <text x="${LBL+bw+6}" y="${yy+barH/2+3.5}" font-size="10" font-weight="700" fill="#334155"
+          font-family="Segoe UI,Arial,sans-serif">${pct?pct+'%':'—'}</text>`;
+    }).join('');
+    const bg = `<rect x="0" y="${y}" width="${LBL+MAX+44}" height="${groupH}" fill="${(y/groupH)%2===0?'#f8fafc':'#ffffff'}"/>`;
+    const label = `<text x="${LBL-8}" y="${y+groupH/2+4}" text-anchor="end" font-size="11.5" font-weight="700" fill="#1e293b"
+      font-family="Segoe UI,Arial,sans-serif">${theme}</text>`;
+    const block = `<g>${bg}${label}${bars}</g>`;
+    y += groupH;
+    return block;
+  }).join('');
+  const chartW = LBL+MAX+44;
+  const chartSVG = `<svg width="${chartW}" height="${y}" viewBox="0 0 ${chartW} ${y}" xmlns="http://www.w3.org/2000/svg">${themeBlocks}</svg>`;
+
+  // ── Légende
+  const legend = sessions.map((s,si)=>`<div style="display:flex;align-items:center;gap:6px;font-size:11px">
+      <div style="width:12px;height:12px;border-radius:3px;background:${COMPARE_COLORS[si%COMPARE_COLORS.length]}"></div>
+      <span style="color:#475569">${s.label}</span>
+    </div>`).join('');
+
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/>
 <title>Comparaison — ${atelier||'Analyse Mentimeter'}</title>
 <style>
 *{box-sizing:border-box}
-body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;padding:30px;margin:0}
-h1{font-size:20px;margin-bottom:4px}
-.sub{color:#64748b;font-size:12px;margin-bottom:20px}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:12.5px}
-thead th{background:#f1f5f9;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#475569}
-tr.score-row td{border-top:2px solid #1e293b;border-bottom:2px solid #1e293b;padding:12px 10px}
-tr.q-row td{border-bottom:2px solid #e2e8f0}
-@media print{ body{padding:0} }
+body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;padding:0;margin:0;background:#fff}
+.banner{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:28px 34px}
+.banner h1{font-size:21px;margin:0 0 4px;font-weight:800}
+.banner .sub{font-size:12px;opacity:.85}
+.wrap{padding:26px 34px}
+.donuts{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0}
+h2{font-size:14px;font-weight:800;color:#1e293b;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px}
+.ft{margin-top:28px;padding-top:14px;border-top:1px solid #e2e8f0;font-size:10.5px;color:#94a3b8;text-align:center}
+@media print{ .banner{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
 </style></head><body>
-<h1>📊 Comparaison — ${atelier||'Analyse Mentimeter'}</h1>
-<div class="sub">Généré le ${today} · ${sessions.length} session(s) comparée(s) · Conseil Départemental du Lot-et-Garonne</div>
-<table>
-  <thead><tr><th>Thème</th>${head}</tr></thead>
-  <tbody>
-    <tr class="score-row"><td style="font-weight:800">SCORE GLOBAL</td>${scoreRow}</tr>
-    <tr class="q-row"><td></td>${qRow}</tr>
-    ${rows}
-  </tbody>
-</table>
+<div class="banner">
+  <h1>📊 Rapport de comparaison — ${atelier||'Analyse Mentimeter'}</h1>
+  <div class="sub">Généré le ${today} · ${sessions.length} session(s) comparée(s) · Conseil Départemental du Lot-et-Garonne</div>
+</div>
+<div class="wrap">
+  <h2>Scores globaux</h2>
+  <div class="donuts">${donutCards}</div>
+  <h2>Taux de réussite par thème</h2>
+  ${chartSVG}
+  <div class="legend">${legend}</div>
+  <div class="ft">Document généré automatiquement — Analyse Mentimeter — Conseil Départemental du Lot-et-Garonne</div>
+</div>
 </body></html>`;
   const w = window.open('', '_blank');
   if (!w) { alert("Le navigateur a bloqué l'ouverture de la fenêtre. Autorisez les pop-ups pour ce site."); return; }
