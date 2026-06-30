@@ -1214,6 +1214,7 @@ function App() {
     catch {}
   }, [sessions]);
   const [showCompare,   setShowCompare]    = useState(false);
+  const [compareSelected, setCompareSelected] = useState(null);
   const [qSearch,       setQSearch]        = useState("");
   const [qSort,         setQSort]          = useState({key:"taux",dir:"asc"});
   const [showPresent,   setShowPresent]    = useState(false);
@@ -1506,7 +1507,7 @@ function App() {
         { label:"🎬 Présenter & Comparer", color:"#7c3aed", items:[
           { icon:"🎬", txt:"Présenter",         fn:()=>{ if(questionsData.length>0){setPresentIdx(0);setShowPresent(true);}else alert("Aucune question."); if(!menuPinned) setShowMenu(false); } },
           { icon:"📌", txt:"Archiver", fn:()=>{ if(questionsData.length===0){alert("Aucune donnée à archiver.");return;} const label=atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:''); setSessions(prev=>[...prev,{id:Date.now(),label,atelier,partenaire,dateSession,participants,questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData)}]); if(!menuPinned) setShowMenu(false); } },
-          { icon:"📊", txt:`Comparer (${sessions.length+1})`, fn:()=>{ setShowCompare(true); if(!menuPinned) setShowMenu(false); }, disabled:sessions.length===0, title:sessions.length===0?"Archivez au moins une session pour comparer":"" },
+          { icon:"📊", txt:`Comparer (${sessions.length+1})`, fn:()=>{ setCompareSelected(new Set([...sessions.map(s=>s.id),"current"])); setShowCompare(true); if(!menuPinned) setShowMenu(false); }, disabled:sessions.length===0, title:sessions.length===0?"Archivez au moins une session pour comparer":"" },
         ]},
         { label:"⚙️ Gérer", color:"#64748b", items:[
           { icon:"⚙️", txt:`Seuils ${seuilBas}/${seuilHaut}`, fn:()=>{ setShowSeuils(s=>!s); if(!menuPinned) setShowMenu(false); } },
@@ -2232,27 +2233,42 @@ function App() {
         )
       )
     ),
-    showCompare && sessions.length > 0 && e('div',{
-      style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",
-        display:"flex",alignItems:"flex-start",justifyContent:"center",
-        zIndex:1000,padding:"24px 16px",overflowY:"auto"},
-      onClick: ev => { if(ev.target===ev.currentTarget) setShowCompare(false); }
-    },
+    showCompare && sessions.length > 0 && (() => {
+      const fullList=[...sessions,{
+        id:"current",label:atelier+(partenaire?` · ${partenaire}`:''),
+        score:globalScore(questionsData),questions:questionsData,themes:byTheme(questionsData),
+      }];
+      const selected = compareSelected || new Set(fullList.map(s=>s.id));
+      const toggleSel = id => setCompareSelected(prev=>{
+        const cur = new Set(prev || fullList.map(s=>s.id));
+        if(cur.has(id)) cur.delete(id); else cur.add(id);
+        return cur;
+      });
+      const allSessions = fullList.filter(s=>selected.has(s.id));
+      const COLORS=["#2563eb","#16a34a","#d97706","#dc2626","#7c3aed","#0891b2"];
+      return e('div',{
+        style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",
+          display:"flex",alignItems:"flex-start",justifyContent:"center",
+          zIndex:1000,padding:"24px 16px",overflowY:"auto"},
+        onClick: ev => { if(ev.target===ev.currentTarget) setShowCompare(false); }
+      },
       e('div',{style:{background:"#fff",borderRadius:20,padding:24,
         width:"100%",maxWidth:900,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}},
         e('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}},
           e('h2',{style:{fontSize:16,fontWeight:800,color:"#1e293b"}},
-            `📊 Comparaison — ${sessions.length+1} session(s)`),
+            `📊 Comparaison — ${allSessions.length}/${fullList.length} session(s) cochée(s)`),
           e('div',{style:{display:"flex",gap:8}},
             e('button',{
               onClick:()=>{
                 // Ajouter session courante si pas encore dans la liste
+                const newId = Date.now();
                 setSessions(prev=>[...prev,{
-                  id:Date.now(),
+                  id:newId,
                   label:atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:''),
                   atelier,partenaire,dateSession,participants,
                   questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData),
                 }]);
+                setCompareSelected(prev=>new Set([...(prev||fullList.map(s=>s.id)),newId]));
               },
               style:{background:"#1e40af",color:"#fff",border:"none",borderRadius:8,
                 padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}
@@ -2261,19 +2277,22 @@ function App() {
               style:{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8"}},"✕")
           )
         ),
-        // Scores globaux
+        // Scores globaux avec cases à cocher
         e('div',{style:{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}},
-          ...[...sessions,{
-            id:"current",label:atelier+(partenaire?` · ${partenaire}`:''),
-            score:globalScore(questionsData),questions:questionsData,themes:byTheme(questionsData),
-          }].map((s,si)=>{
+          ...fullList.map((s,si)=>{
             const col=gc(s.score);
+            const isSel = selected.has(s.id);
             return e('div',{key:s.id,style:{
-              flex:1,minWidth:150,background:"#f8fafc",border:`2px solid ${col}33`,
+              flex:1,minWidth:150,background:isSel?"#f8fafc":"#f1f5f9",
+              border:`2px solid ${isSel?col+"33":"#e2e8f0"}`,
               borderRadius:14,padding:"14px 16px",textAlign:"center",position:"relative",
-            }},
-              si<sessions.length && e('button',{
-                onClick:()=>setSessions(prev=>prev.filter(x=>x.id!==s.id)),
+              opacity:isSel?1:0.5,cursor:"pointer",transition:"opacity .15s"
+            }, onClick:()=>toggleSel(s.id)},
+              e('input',{type:"checkbox",checked:isSel,onChange:()=>toggleSel(s.id),
+                onClick:ev=>ev.stopPropagation(),
+                style:{position:"absolute",top:8,left:8,width:16,height:16,cursor:"pointer"}}),
+              s.id!=="current" && e('button',{
+                onClick:ev=>{ev.stopPropagation(); setSessions(prev=>prev.filter(x=>x.id!==s.id));},
                 style:{position:"absolute",top:6,right:8,background:"none",border:"none",
                   color:"#cbd5e1",fontSize:14,cursor:"pointer",lineHeight:1}
               },"✕"),
@@ -2285,15 +2304,13 @@ function App() {
             );
           })
         ),
-        // Barres comparatives par thème
-        e('div',{style:{overflowX:"auto"}},
+        // Barres comparatives par thème (sessions cochées uniquement)
+        allSessions.length === 0
+          ? e('div',{style:{textAlign:"center",color:"#94a3b8",fontSize:13,padding:"24px 0"}},
+              "Cochez au moins une session pour afficher la comparaison.")
+          : e('div',{style:{overflowX:"auto"}},
           (() => {
-            const allSessions=[...sessions,{
-              id:"current",label:atelier,score:globalScore(questionsData),
-              questions:questionsData,themes:byTheme(questionsData),
-            }];
             const allThemes=[...new Set(allSessions.flatMap(s=>s.themes.map(t=>t.theme)))].sort();
-            const COLORS=["#2563eb","#16a34a","#d97706","#dc2626","#7c3aed","#0891b2"];
             return e('div',{style:{display:"grid",gap:6}},
               allThemes.map(theme=>
                 e('div',{key:theme,style:{display:"grid",
@@ -2319,11 +2336,10 @@ function App() {
             );
           })()
         ),
-        // Légende sessions
+        // Légende sessions (cochées uniquement)
         e('div',{style:{display:"flex",gap:12,flexWrap:"wrap",marginTop:14}},
-          ...[...sessions,{id:"current",label:atelier+(partenaire?` · ${partenaire}`:'')}]
+          ...allSessions
             .map((s,si)=>{
-              const COLORS=["#2563eb","#16a34a","#d97706","#dc2626","#7c3aed","#0891b2"];
               return e('div',{key:s.id,style:{display:"flex",alignItems:"center",gap:5,fontSize:11}},
                 e('div',{style:{width:12,height:12,borderRadius:3,background:COLORS[si%COLORS.length],flexShrink:0}}),
                 e('span',{style:{color:"#475569"}},s.label+(s.id==="current"?" (courante)":""))
@@ -2331,7 +2347,8 @@ function App() {
             })
         )
       )
-    ),
+    );
+    })(),
 
     // ── MODE PRÉSENTATION
     showPresent && questionsData.length>0 && (() => {
