@@ -1505,7 +1505,8 @@ function App() {
         ]},
         { label:"🎬 Présenter & Comparer", color:"#7c3aed", items:[
           { icon:"🎬", txt:"Présenter",         fn:()=>{ if(questionsData.length>0){setPresentIdx(0);setShowPresent(true);}else alert("Aucune question."); if(!menuPinned) setShowMenu(false); } },
-          { icon:"📌", txt:sessions.length>0?`Comparer (${sessions.length+1})`:"Archiver", fn:()=>{ const label=atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:''); setSessions(prev=>[...prev,{id:Date.now(),label,atelier,partenaire,dateSession,participants,questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData)}]); setShowCompare(true); if(!menuPinned) setShowMenu(false); } },
+          { icon:"📌", txt:"Archiver", fn:()=>{ if(questionsData.length===0){alert("Aucune donnée à archiver.");return;} const label=atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:''); setSessions(prev=>[...prev,{id:Date.now(),label,atelier,partenaire,dateSession,participants,questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData)}]); if(!menuPinned) setShowMenu(false); } },
+          { icon:"📊", txt:`Comparer (${sessions.length+1})`, fn:()=>{ setShowCompare(true); if(!menuPinned) setShowMenu(false); }, disabled:sessions.length===0, title:sessions.length===0?"Archivez au moins une session pour comparer":"" },
         ]},
         { label:"⚙️ Gérer", color:"#64748b", items:[
           { icon:"⚙️", txt:`Seuils ${seuilBas}/${seuilHaut}`, fn:()=>{ setShowSeuils(s=>!s); if(!menuPinned) setShowMenu(false); } },
