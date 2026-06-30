@@ -2377,14 +2377,20 @@ function App() {
                   ...allSessions.map((s,si)=>{
                     const t=s.themes.find(x=>x.theme===theme);
                     const pct=t?t.taux:0;
+                    const labelInside = pct>=85;
                     return e('div',{key:s.id,style:{position:"relative",background:"#f1f5f9",
-                      borderRadius:6,height:22,overflow:"hidden"}},
+                      borderRadius:6,height:22,overflow:"visible"}},
                       e('div',{style:{width:`${pct}%`,height:"100%",
                         background:COLORS[si%COLORS.length],borderRadius:6,
                         transition:"width .3s",opacity:0.85}}),
-                      e('span',{style:{position:"absolute",right:5,top:"50%",
-                        transform:"translateY(-50%)",fontSize:10,fontWeight:700,
-                        color:pct>30?"#fff":"#475569"}},pct?`${pct}%`:"—")
+                      e('span',{style: labelInside ? {
+                          position:"absolute",right:5,top:"50%",
+                          transform:"translateY(-50%)",fontSize:10,fontWeight:700,color:"#fff"
+                        } : {
+                          position:"absolute",left:`min(calc(${pct}% + 5px), calc(100% - 28px))`,top:"50%",
+                          transform:"translateY(-50%)",fontSize:10,fontWeight:700,
+                          color:"#475569",whiteSpace:"nowrap"
+                        }},pct?`${pct}%`:"—")
                     );
                   })
                 )
