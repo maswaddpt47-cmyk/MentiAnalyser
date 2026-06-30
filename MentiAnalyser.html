@@ -559,36 +559,81 @@ function exportComparisonReport(sessions, atelier) {
   const chartW = LBL+MAX+44;
   const chartSVG = `<svg width="${chartW}" height="${y}" viewBox="0 0 ${chartW} ${y}" xmlns="http://www.w3.org/2000/svg">${themeBlocks}</svg>`;
 
+  // ── Radar comparatif (toutes sessions superposées)
+  function buildRadar() {
+    if (allThemes.length < 3) return '';
+    const cx=170, cy=170, R=128;
+    const angleFor = i => -Math.PI/2 + i*2*Math.PI/allThemes.length;
+    const rings = [20,40,60,80,100].map(lvl => {
+      const pts = allThemes.map((_,i)=>{
+        const a=angleFor(i), r=lvl/100*R;
+        return `${(cx+r*Math.cos(a)).toFixed(1)},${(cy+r*Math.sin(a)).toFixed(1)}`;
+      }).join(' ');
+      return `<polygon points="${pts}" fill="none" stroke="#e2e8f0" stroke-width="1"/>`;
+    }).join('');
+    const axes = allThemes.map((t,i)=>{
+      const a=angleFor(i);
+      const x2=cx+R*Math.cos(a), y2=cy+R*Math.sin(a);
+      const lx=cx+(R+16)*Math.cos(a), ly=cy+(R+16)*Math.sin(a);
+      const anchor = Math.cos(a)>0.3?'start':Math.cos(a)<-0.3?'end':'middle';
+      return `<line x1="${cx}" y1="${cy}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#e2e8f0" stroke-width="1"/>
+        <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="9.5" fill="#475569" text-anchor="${anchor}"
+          font-family="Segoe UI,Arial,sans-serif">${t}</text>`;
+    }).join('');
+    const polys = sessions.map((s,si)=>{
+      const col=COMPARE_COLORS[si%COMPARE_COLORS.length];
+      const pts = allThemes.map((theme,i)=>{
+        const t=s.themes.find(x=>x.theme===theme);
+        const v=t?t.taux:0, a=angleFor(i), r=v/100*R;
+        return `${(cx+r*Math.cos(a)).toFixed(1)},${(cy+r*Math.sin(a)).toFixed(1)}`;
+      }).join(' ');
+      return `<polygon points="${pts}" fill="${col}" fill-opacity="0.1" stroke="${col}" stroke-width="2"/>`;
+    }).join('');
+    return `<svg width="340" height="340" viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg">${rings}${axes}${polys}</svg>`;
+  }
+  const radarSVG = buildRadar();
+
   // ── Légende
-  const legend = sessions.map((s,si)=>`<div style="display:flex;align-items:center;gap:6px;font-size:11px">
-      <div style="width:12px;height:12px;border-radius:3px;background:${COMPARE_COLORS[si%COMPARE_COLORS.length]}"></div>
+  const legend = sessions.map((s,si)=>`<div class="leg-item" style="display:flex;align-items:center;gap:6px;font-size:11px">
+      <div class="leg-dot" style="width:12px;height:12px;border-radius:3px;background:${COMPARE_COLORS[si%COMPARE_COLORS.length]}"></div>
       <span style="color:#475569">${s.label}</span>
     </div>`).join('');
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/>
 <title>Comparaison — ${atelier||'Analyse Mentimeter'}</title>
 <style>
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;padding:0;margin:0;background:#fff}
 .banner{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:28px 34px}
 .banner h1{font-size:21px;margin:0 0 4px;font-weight:800}
 .banner .sub{font-size:12px;opacity:.85}
-.wrap{padding:26px 34px}
-.donuts{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px}
-.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0}
-h2{font-size:14px;font-weight:800;color:#1e293b;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px}
-.ft{margin-top:28px;padding-top:14px;border-top:1px solid #e2e8f0;font-size:10.5px;color:#94a3b8;text-align:center}
-@media print{ .banner{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
+.wrap{padding:20px 34px}
+.donuts{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;page-break-inside:avoid}
+.section{page-break-inside:avoid;margin-bottom:22px}
+.radar-row{display:flex;justify-content:center;page-break-inside:avoid}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;page-break-inside:avoid}
+.leg-dot{flex-shrink:0}
+h2{font-size:14px;font-weight:800;color:#1e293b;margin:0 0 10px;text-transform:uppercase;letter-spacing:.5px}
+.ft{margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:10.5px;color:#94a3b8;text-align:center}
+@media print{ @page{margin:14mm} }
 </style></head><body>
 <div class="banner">
   <h1>📊 Rapport de comparaison — ${atelier||'Analyse Mentimeter'}</h1>
   <div class="sub">Généré le ${today} · ${sessions.length} session(s) comparée(s) · Conseil Départemental du Lot-et-Garonne</div>
 </div>
 <div class="wrap">
-  <h2>Scores globaux</h2>
-  <div class="donuts">${donutCards}</div>
-  <h2>Taux de réussite par thème</h2>
-  ${chartSVG}
+  <div class="section">
+    <h2>Scores globaux</h2>
+    <div class="donuts">${donutCards}</div>
+  </div>
+  <div class="section">
+    <h2>Taux de réussite par thème</h2>
+    ${chartSVG}
+  </div>
+  ${radarSVG ? `<div class="section">
+    <h2>Vue radar — comparaison multi-thèmes</h2>
+    <div class="radar-row">${radarSVG}</div>
+  </div>` : ''}
   <div class="legend">${legend}</div>
   <div class="ft">Document généré automatiquement — Analyse Mentimeter — Conseil Départemental du Lot-et-Garonne</div>
 </div>
