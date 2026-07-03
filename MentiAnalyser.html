@@ -1295,8 +1295,16 @@ Règles :
       if (data.error) throw new Error(data.error.message);
 
       const raw   = data.content?.[0]?.text?.trim() || "";
-      const clean = raw.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(clean);
+      const clean = raw.replace(/```json\b|```/g, "").trim();
+      let parsed;
+      try {
+        parsed = JSON.parse(clean);
+      } catch(_) {
+        // AI sometimes returns extra text after JSON — extract first complete object/array
+        const match = clean.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+        if (!match) throw new Error("Réponse IA non parseable");
+        parsed = JSON.parse(match[1]);
+      }
 
       // PDF → tableau de questions / Image → objet unique
       const items = Array.isArray(parsed) ? parsed : [parsed];
@@ -1910,13 +1918,15 @@ function App() {
         uploadStatus==="error" && e('div',{
           style:{background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:10,padding:"10px 12px",marginBottom:14}
         },
-          uploadErrors.length > 0
+          uploadErrors.some(e => /HTTP\s*\d|clé|api|auth|network|fetch/i.test(e.motif))
             ? e('p',{style:{fontSize:12,color:"#dc2626",fontWeight:600}}, "❌ Erreur d'analyse — vérifiez votre clé API")
             : e('div',null,
                 e('p',{style:{fontSize:12,color:"#92400e",fontWeight:600,marginBottom:4}},
                   "⚠️ Aucune question quiz détectée dans ces images."),
                 e('p',{style:{fontSize:11,color:"#b45309"}},
-                  "Les captures importées semblent contenir des sondages d'opinion ou des word clouds (sans ✓/✗). Importez uniquement les slides avec des questions à bonne réponse définie.")
+                  "Les captures semblent contenir des sondages d'opinion ou word clouds (sans ✓/✗). Importez uniquement les slides avec des questions à bonne réponse définie."),
+                uploadErrors.length > 0 && e('div',{style:{marginTop:6,fontSize:10,color:"#92400e"}},
+                  uploadErrors.map((er,i)=>e('div',{key:i}, `• ${er.file} : ${er.motif}`)))
               )
         ),
 
