@@ -206,8 +206,8 @@ const byTheme = (qs=[]) => {
     .map(d => ({
       ...d,
       taux: d.total > 0
-        ? Math.round(d.correct / d.total * 100)
-        : (d.count > 0 ? Math.round(d.tauxSum / d.count) : 0)
+        ? Math.min(100, Math.round(d.correct / d.total * 100))
+        : (d.count > 0 ? Math.min(100, Math.round(d.tauxSum / d.count)) : 0)
     }))
     .sort((a, b) => a.taux - b.taux);
 };
@@ -216,8 +216,8 @@ const globalScore = (qs=[]) => {
   const responded = qs.filter(q => q.total > 0);
   const tot = responded.reduce((a,q) => a + q.total, 0);
   const cor = responded.reduce((a,q) => a + q.correct, 0);
-  if (tot > 0) return Math.round(cor / tot * 100);
-  if (responded.length > 0) return Math.round(responded.reduce((a,q) => a + (q.taux||0), 0) / responded.length);
+  if (tot > 0) return Math.min(100, Math.round(cor / tot * 100));
+  if (responded.length > 0) return Math.min(100, Math.round(responded.reduce((a,q) => a + (q.taux||0), 0) / responded.length));
   return 0;
 };
 
@@ -1306,7 +1306,7 @@ Règles :
         if (!item.q) { errors.push({ file: files[i].name, motif: "JSON incomplet" }); continue; }
         const correct = parseInt(item.correct) || 0;
         const total   = parseInt(item.total)   || 0;
-        const taux    = total > 0 ? Math.round(correct / total * 100) : (parseInt(item.taux) || 0);
+        const taux    = total > 0 ? Math.min(100, Math.round(correct / total * 100)) : Math.min(100, parseInt(item.taux) || 0);
         const norm = s => s.toLowerCase().replace(/\s+/g,' ').trim();
         const doublon = results.find(r => norm(r.q) === norm(item.q));
         if (doublon) {
@@ -2094,8 +2094,8 @@ function App() {
   const updateQ = (id, patch) =>
     setQuestionsData(prev => prev.map(q => q.id===id ? {...q,...patch,
       taux: patch.correct!==undefined || patch.total!==undefined
-        ? Math.round(((patch.correct??q.correct)/Math.max(patch.total??q.total,1))*100)
-        : (patch.taux??q.taux)
+        ? Math.min(100, Math.round(((patch.correct??q.correct)/Math.max(patch.total??q.total,1))*100))
+        : Math.min(100, patch.taux??q.taux)
     } : q));
 
   const deleteQ = id => {
