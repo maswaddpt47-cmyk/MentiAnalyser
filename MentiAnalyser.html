@@ -1910,7 +1910,14 @@ function App() {
         uploadStatus==="error" && e('div',{
           style:{background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:10,padding:"10px 12px",marginBottom:14}
         },
-          e('p',{style:{fontSize:12,color:"#dc2626",fontWeight:600}}, "❌ Erreur d'analyse — vérifiez votre clé API")
+          uploadErrors.length > 0
+            ? e('p',{style:{fontSize:12,color:"#dc2626",fontWeight:600}}, "❌ Erreur d'analyse — vérifiez votre clé API")
+            : e('div',null,
+                e('p',{style:{fontSize:12,color:"#92400e",fontWeight:600,marginBottom:4}},
+                  "⚠️ Aucune question quiz détectée dans ces images."),
+                e('p',{style:{fontSize:11,color:"#b45309"}},
+                  "Les captures importées semblent contenir des sondages d'opinion ou des word clouds (sans ✓/✗). Importez uniquement les slides avec des questions à bonne réponse définie.")
+              )
         ),
 
         // Rapport d'erreurs par image
