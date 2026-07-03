@@ -1235,12 +1235,14 @@ async function analyserPNG(files, apiKey, setStatus, setProgress, setRetryInfo, 
           ? `Ce PDF contient les résultats d'un quiz Mentimeter (plusieurs slides/pages). Pour CHAQUE question visible, extrais les informations et réponds UNIQUEMENT avec un tableau JSON valide, rien d'autre :
 [{"q":"texte question","correct":nb,"total":nb,"taux":pourcentage,"theme":"Thème"}, ...]
 Pour "theme", choisis parmi : ${THEMES_CONNUS.join(', ')}. Si aucun ne correspond, propose un thème court.
-Si aucune question n'est visible, réponds : []`
+IMPORTANT : n'inclus QUE les questions avec une bonne réponse définie (✓ visible, pourcentage de réussite affiché). Exclure : word cloud, questions d'opinion/sondage sans bonne réponse, "No responses collected".
+Si aucune question éligible n'est visible, réponds : []`
           : `C'est une capture d'écran d'un quiz Mentimeter. Extrais ces informations et réponds UNIQUEMENT en JSON valide, rien d'autre :
 {"q":"texte exact de la question","correct":nombre_bonnes_réponses,"total":nombre_total_réponses,"taux":pourcentage_entier,"theme":"Thème"}
 Pour le champ "theme", choisis le plus approprié parmi : ${THEMES_CONNUS.join(', ')}.
 Si aucun ne correspond, propose un thème court en français.
-Si tu ne vois pas de question claire, réponds : {"erreur":"non reconnu"}`;
+IMPORTANT : si la question est un sondage d'opinion (sans ✓/✗), un word cloud, ou affiche "No responses collected", réponds : {"erreur":"non reconnu"}.
+Si tu ne vois pas de question quiz claire avec bonne réponse, réponds : {"erreur":"non reconnu"}`;
       } else {
         // Mode source libre — prompt générique
         promptText = `Contexte : ${sourceContext.trim()}
