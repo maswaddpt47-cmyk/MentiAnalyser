@@ -195,6 +195,7 @@ const getLevel = (t, bas=60, haut=80) => t >= haut
 const byTheme = (qs=[]) => {
   const map = {};
   qs.forEach(({ theme, correct, total, taux }) => {
+    if (total === 0) return; // exclut les questions sans réponses
     if (!map[theme]) map[theme] = { theme, correct:0, total:0, tauxSum:0, count:0 };
     map[theme].correct  += correct;
     map[theme].total    += total;
@@ -212,10 +213,11 @@ const byTheme = (qs=[]) => {
 };
 
 const globalScore = (qs=[]) => {
-  const tot = qs.reduce((a,q) => a + q.total, 0);
-  const cor = qs.reduce((a,q) => a + q.correct, 0);
+  const responded = qs.filter(q => q.total > 0);
+  const tot = responded.reduce((a,q) => a + q.total, 0);
+  const cor = responded.reduce((a,q) => a + q.correct, 0);
   if (tot > 0) return Math.round(cor / tot * 100);
-  if (qs.length > 0) return Math.round(qs.reduce((a,q) => a + (q.taux||0), 0) / qs.length);
+  if (responded.length > 0) return Math.round(responded.reduce((a,q) => a + (q.taux||0), 0) / responded.length);
   return 0;
 };
 
@@ -1389,9 +1391,10 @@ function App() {
 
   const themes      = byTheme(questionsData);
   const score       = globalScore(questionsData);
-  const acquis      = questionsData.filter(q => q.taux >= seuilHaut).length;
-  const fragiles    = questionsData.filter(q => q.taux >= seuilBas && q.taux < seuilHaut).length;
-  const areinforcer = questionsData.filter(q => q.taux <  seuilBas).length;
+  const respondedQs = questionsData.filter(q => q.total > 0);
+  const acquis      = respondedQs.filter(q => q.taux >= seuilHaut).length;
+  const fragiles    = respondedQs.filter(q => q.taux >= seuilBas && q.taux < seuilHaut).length;
+  const areinforcer = respondedQs.filter(q => q.taux <  seuilBas).length;
   const filteredQ   = activeTheme ? questionsData.filter(q => q.theme === activeTheme) : [];
   const radarData   = themes.map(t => ({
     subject: t.theme.length > 13 ? t.theme.slice(0,13)+"…" : t.theme,
@@ -1954,7 +1957,7 @@ function App() {
     gap:12, marginBottom:16,
   }},
     e(StatCard,{label:"Score global",  value:`${score}%`,  sub:"moyenne de la classe",  accent:gc(score),   shadow:`0 4px 20px rgba(37,99,235,0.18)`}),
-    e(StatCard,{label:"Acquis",        value:acquis,        sub:`≥ ${seuilHaut}% · ${questionsData.length>0?Math.round(acquis/questionsData.length*100):0}% des questions`, accent:"#16a34a", shadow:`0 4px 20px rgba(22,163,74,0.18)`}),
+    e(StatCard,{label:"Acquis",        value:acquis,        sub:`≥ ${seuilHaut}% · ${respondedQs.length>0?Math.round(acquis/respondedQs.length*100):0}% des questions`, accent:"#16a34a", shadow:`0 4px 20px rgba(22,163,74,0.18)`}),
     e(StatCard,{label:"Fragiles",      value:fragiles,      sub:`${seuilBas}–${seuilHaut-1}% de réussite`,  accent:"#d97706",  shadow:`0 4px 20px rgba(217,119,6,0.18)`}),
     e(StatCard,{label:"À renforcer",   value:areinforcer,   sub:"< 60% de réussite",     accent:"#dc2626",  shadow:`0 4px 20px rgba(220,38,38,0.18)`}),
     e(StatCard,{label:"Thèmes",        value:themes.length, sub:"domaines évalués",       accent:"#6366f1",  shadow:`0 4px 20px rgba(99,102,241,0.18)`}),
