@@ -1324,7 +1324,7 @@ Règles :
         if (doublon) {
           errors.push({ file: files[i].name, motif: `Doublon ignoré : "${item.q.slice(0,40)}"` });
         } else {
-          results.push({ id: results.length+1, theme: item.theme||"Général", q: item.q, correct, total, taux });
+          results.push({ id: results.length+1, theme: item.theme||"Général", q: item.q, correct, total, taux, sourceFile: files[i].name });
         }
       }
     } catch(err) {
@@ -2385,59 +2385,135 @@ function App() {
     ),
 
     // ── Modale review avant application
-    showReview && uploadResults.length>0 && e('div',{
-      style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",
-        display:"flex",alignItems:"flex-start",justifyContent:"center",
-        zIndex:1000,padding:"24px 16px",overflowY:"auto"},
-      onClick: ev => { if(ev.target===ev.currentTarget) setShowReview(false); }
-    },
-      e('div',{style:{background:"#fff",borderRadius:20,padding:24,
-        width:"100%",maxWidth:760,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}},
-        e('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
-          e('h2',{style:{fontSize:15,fontWeight:800,color:"#1e293b"}},
-            `🔍 Vérification — ${uploadResults.length} question(s) analysée(s)`),
-          e('button',{onClick:()=>setShowReview(false),
-            style:{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8"}},"✕")
-        ),
-        e('div',{style:{maxHeight:400,overflowY:"auto",display:"grid",gap:6,marginBottom:16}},
-          ...uploadResults.map((r,i)=>{
-            const col=gc(r.taux);
-            return e('div',{key:i,style:{
-              display:"grid",gridTemplateColumns:"1fr 110px 60px 90px",
-              alignItems:"center",gap:8,padding:"8px 10px",
-              borderRadius:8,background:i%2===0?"#f8fafc":"#fff",
-              border:"1px solid #f1f5f9",
-            }},
-              e('span',{style:{fontSize:12}},r.q),
-              e('span',{style:{fontSize:10,color:"#6366f1",background:"#eef2ff",
-                borderRadius:5,padding:"2px 7px",textAlign:"center"}},r.theme),
-              e('span',{style:{fontSize:13,fontWeight:800,color:col,textAlign:"center"}},`${r.taux}%`),
-              e('span',{style:{fontSize:10,color:col,fontWeight:600}},gl(r.taux).icon+' '+gl(r.taux).label)
-            );
-          })
-        ),
-        uploadErrors.length>0 && e('div',{style:{background:"#fff7ed",border:"1px solid #fed7aa",
-          borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:11,color:"#9a3412"}},
-          `⚠️ ${uploadErrors.length} image(s) ignorée(s) : `+uploadErrors.map(e=>e.file).join(', ')
-        ),
-        e('div',{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
-          e('button',{onClick:()=>setShowReview(false),
-            style:{background:"#f1f5f9",border:"none",borderRadius:10,
-              padding:"9px 18px",fontWeight:600,fontSize:13,cursor:"pointer",color:"#475569"}
-          },"Annuler"),
-          e('button',{
-            onClick:()=>{
-              setQuestionsData(uploadResults);
-              setEditingSessionId(null);
-              setShowReview(false); setShowUpload(false);
-              setUploadStatus("idle"); setUploadFiles([]); setUploadResults([]); setUploadErrors([]); setUploadProgress(0); setUploadSource("");
-            },
-            style:{background:"#16a34a",border:"none",borderRadius:10,
-              padding:"9px 18px",fontWeight:700,fontSize:13,cursor:"pointer",color:"#fff"}
-          },"✅ Appliquer les données")
+    showReview && uploadResults.length>0 && (() => {
+      // grouper par fichier source
+      const fileGroups = [];
+      const fileMap = {};
+      uploadResults.forEach(r => {
+        const f = r.sourceFile || "Import";
+        if (!fileMap[f]) { fileMap[f] = []; fileGroups.push(f); }
+        fileMap[f].push(r);
+      });
+      const multiFile = fileGroups.length > 1;
+
+      const archiveGroup = (fname, qs) => {
+        const label = atelier + (partenaire ? ` · ${partenaire}` : '') + ` — ${fname}`;
+        setSessions(prev => [...prev, {
+          id: Date.now() + Math.random(),
+          label, atelier, partenaire, dateSession, participants,
+          questions: qs.map((q,i)=>({...q,id:i+1})),
+          score: globalScore(qs), themes: byTheme(qs)
+        }]);
+      };
+
+      const QRow = (r,i) => {
+        const col=gc(r.taux);
+        return e('div',{key:i,style:{
+          display:"grid",gridTemplateColumns:"1fr 110px 60px 90px",
+          alignItems:"center",gap:8,padding:"8px 10px",
+          borderRadius:8,background:i%2===0?"#f8fafc":"#fff",
+          border:"1px solid #f1f5f9",
+        }},
+          e('span',{style:{fontSize:12}},r.q),
+          e('span',{style:{fontSize:10,color:"#6366f1",background:"#eef2ff",
+            borderRadius:5,padding:"2px 7px",textAlign:"center"}},r.theme),
+          e('span',{style:{fontSize:13,fontWeight:800,color:col,textAlign:"center"}},`${r.taux}%`),
+          e('span',{style:{fontSize:10,color:col,fontWeight:600}},gl(r.taux).icon+' '+gl(r.taux).label)
+        );
+      };
+
+      return e('div',{
+        style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",
+          display:"flex",alignItems:"flex-start",justifyContent:"center",
+          zIndex:1000,padding:"24px 16px",overflowY:"auto"},
+        onClick: ev => { if(ev.target===ev.currentTarget) setShowReview(false); }
+      },
+        e('div',{style:{background:"#fff",borderRadius:20,padding:24,
+          width:"100%",maxWidth:800,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}},
+          e('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+            e('h2',{style:{fontSize:15,fontWeight:800,color:"#1e293b"}},
+              `🔍 Vérification — ${uploadResults.length} question(s) · ${fileGroups.length} fichier(s)`),
+            e('button',{onClick:()=>setShowReview(false),
+              style:{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8"}},"✕")
+          ),
+
+          // Si plusieurs fichiers : afficher par groupe
+          multiFile
+            ? e('div',{style:{display:"grid",gap:16,maxHeight:500,overflowY:"auto",marginBottom:16}},
+                fileGroups.map(fname => {
+                  const qs = fileMap[fname];
+                  const sc = globalScore(qs);
+                  const col = gc(sc);
+                  return e('div',{key:fname,style:{border:"1px solid #e2e8f0",borderRadius:12,overflow:"hidden"}},
+                    e('div',{style:{background:"#f8fafc",padding:"10px 14px",display:"flex",
+                      justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #e2e8f0"}},
+                      e('div',null,
+                        e('span',{style:{fontSize:12,fontWeight:700,color:"#1e293b"}},`📄 ${fname}`),
+                        e('span',{style:{fontSize:11,color:"#64748b",marginLeft:8}},`${qs.length} question(s)`),
+                      ),
+                      e('div',{style:{display:"flex",gap:8,alignItems:"center"}},
+                        e('span',{style:{fontSize:14,fontWeight:900,color:col}},`${sc}%`),
+                        e('button',{
+                          onClick:()=>{ archiveGroup(fname,qs); },
+                          title:"Archiver ce fichier comme session séparée",
+                          style:{background:"#1e40af",color:"#fff",border:"none",borderRadius:7,
+                            padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}
+                        },"📌 Archiver"),
+                        e('button',{
+                          onClick:()=>{
+                            setQuestionsData(qs.map((q,i)=>({...q,id:i+1})));
+                            setEditingSessionId(null);
+                            setShowReview(false); setShowUpload(false);
+                            setUploadStatus("idle"); setUploadFiles([]); setUploadResults([]); setUploadErrors([]); setUploadProgress(0); setUploadSource("");
+                          },
+                          title:"Charger uniquement ce fichier dans l'espace de travail",
+                          style:{background:"#0f766e",color:"#fff",border:"none",borderRadius:7,
+                            padding:"4px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}
+                        },"▶ Charger seul"),
+                      )
+                    ),
+                    e('div',{style:{display:"grid",gap:4,padding:8}},
+                      ...qs.map((r,i)=>QRow(r,i))
+                    )
+                  );
+                })
+              )
+            : e('div',{style:{maxHeight:400,overflowY:"auto",display:"grid",gap:6,marginBottom:16}},
+                ...uploadResults.map((r,i)=>QRow(r,i))
+              ),
+
+          uploadErrors.length>0 && e('div',{style:{background:"#fff7ed",border:"1px solid #fed7aa",
+            borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:11,color:"#9a3412"}},
+            `⚠️ ${uploadErrors.length} image(s) ignorée(s) : `+uploadErrors.map(er=>er.file).join(', ')
+          ),
+          e('div',{style:{display:"flex",gap:8,justifyContent:"flex-end",marginTop:12}},
+            e('button',{onClick:()=>setShowReview(false),
+              style:{background:"#f1f5f9",border:"none",borderRadius:10,
+                padding:"9px 18px",fontWeight:600,fontSize:13,cursor:"pointer",color:"#475569"}
+            },"Annuler"),
+            multiFile && e('button',{
+              onClick:()=>{
+                fileGroups.forEach(fname => archiveGroup(fname, fileMap[fname]));
+                setShowReview(false); setShowUpload(false);
+                setUploadStatus("idle"); setUploadFiles([]); setUploadResults([]); setUploadErrors([]); setUploadProgress(0); setUploadSource("");
+              },
+              style:{background:"#1e40af",border:"none",borderRadius:10,
+                padding:"9px 18px",fontWeight:700,fontSize:13,cursor:"pointer",color:"#fff"}
+            },`📌 Archiver tous (${fileGroups.length} sessions)`),
+            e('button',{
+              onClick:()=>{
+                setQuestionsData(uploadResults.map((q,i)=>({...q,id:i+1})));
+                setEditingSessionId(null);
+                setShowReview(false); setShowUpload(false);
+                setUploadStatus("idle"); setUploadFiles([]); setUploadResults([]); setUploadErrors([]); setUploadProgress(0); setUploadSource("");
+              },
+              style:{background:"#16a34a",border:"none",borderRadius:10,
+                padding:"9px 18px",fontWeight:700,fontSize:13,cursor:"pointer",color:"#fff"}
+            },"✅ Tout appliquer")
+          )
         )
-      )
-    ),
+      );
+    })(),
     showCompare && sessions.length > 0 && (() => {
       const fullList=[...sessions,{
         id:"current",label:atelier+(partenaire?` · ${partenaire}`:''),
