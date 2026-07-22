@@ -39,3 +39,26 @@ git commit -m "feat: ajout du filtre par catégorie dans le tableau de bord"
 4. Pusher sur `main` : `git push origin main`
 
 > L'historique git (commits) sert de système de rollback. Pas de backup physique daté en complément : ça duplique l'historique et alourdit le repo.
+
+---
+
+## 3. Tests unitaires — règle obligatoire
+
+| Fichier source | Fichier de tests | Runner |
+|---|---|---|
+| `utils.js` — fonctions bas niveau | `utils.test.js` | `node --test utils.test.js` |
+| `logic.js` — logique métier | `logic.test.js` | `node --test logic.test.js` |
+
+Ces fichiers sont chargés dans le navigateur ET testés sous Node.js (≥ 18).
+Une seule source de vérité — ne jamais dupliquer une fonction entre `utils.js`/`logic.js` et `MentiAnalyser.html`.
+
+Après toute modification de `utils.js` ou `logic.js` :
+1. Modifier la fonction
+2. Exécuter le runner correspondant
+3. Commiter source + tests ensemble si un test a été mis à jour
+
+Règles :
+- Bug corrigé → corriger le code, pas le test
+- Changement intentionnel → mettre à jour code ET test dans le même commit
+- Ne jamais supprimer un test pour faire passer le commit
+- La CI bloque le déploiement si un test échoue
