@@ -1394,6 +1394,7 @@ function App() {
   }, [sessions]);
   const [showCompare,   setShowCompare]    = useState(false);
   const [compareSelected, setCompareSelected] = useState(null);
+  const [editingSessionId, setEditingSessionId] = useState(null);
   const [qSearch,       setQSearch]        = useState("");
   const [qSort,         setQSort]          = useState({key:"taux",dir:"asc"});
   const [showPresent,   setShowPresent]    = useState(false);
@@ -1686,13 +1687,25 @@ function App() {
         ]},
         { label:"🎬 Présenter & Comparer", color:"#7c3aed", items:[
           { icon:"🎬", txt:"Présenter",         fn:()=>{ if(questionsData.length>0){setPresentIdx(0);setShowPresent(true);}else alert("Aucune question."); if(!menuPinned) setShowMenu(false); } },
-          { icon:"📌", txt:"Archiver", fn:()=>{ if(questionsData.length===0){alert("Aucune donnée à archiver.");return;} const label=atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:''); setSessions(prev=>[...prev,{id:Date.now(),label,atelier,partenaire,dateSession,participants,questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData)}]); if(!menuPinned) setShowMenu(false); } },
+          { icon:"📌", txt: editingSessionId ? "💾 Mettre à jour" : "Archiver", fn:()=>{
+            if(questionsData.length===0){alert("Aucune donnée à archiver.");return;}
+            const label=atelier+(partenaire?` · ${partenaire}`:'')+(dateSession?` (${dateSession})`:'');
+            const snap={label,atelier,partenaire,dateSession,participants,questions:questionsData,score:globalScore(questionsData),themes:byTheme(questionsData)};
+            if(editingSessionId){
+              setSessions(prev=>prev.map(s=>s.id===editingSessionId?{...s,...snap}:s));
+              setEditingSessionId(null);
+              alert("Session mise à jour ✓");
+            } else {
+              setSessions(prev=>[...prev,{id:Date.now(),...snap}]);
+            }
+            if(!menuPinned) setShowMenu(false);
+          } },
           { icon:"📊", txt:`Comparer (${sessions.length+1})`, fn:()=>{ setCompareSelected(new Set([...sessions.map(s=>s.id),"current"])); setShowCompare(true); if(!menuPinned) setShowMenu(false); }, disabled:sessions.length===0, title:sessions.length===0?"Archivez au moins une session pour comparer":"" },
         ]},
         { label:"⚙️ Gérer", color:"#64748b", items:[
           { icon:"⚙️", txt:`Seuils ${seuilBas}/${seuilHaut}`, fn:()=>{ setShowSeuils(s=>!s); if(!menuPinned) setShowMenu(false); } },
           { icon:"🗑️", txt:"Vider archives",   fn:()=>{ if(!confirm("Vider toutes les archives ?")) return; setSessions([]); localStorage.removeItem("menti_archives"); if(!menuPinned) setShowMenu(false); }, danger:true },
-          { icon:"🔄", txt:"Réinitialiser",    fn:()=>{ if(!confirm("Réinitialiser toutes les données ?")) return; setAtelier("");setPartenaire("");setAnimateur("");setParticipants("");setDateSession("");setNiveauPublic("");setQuestionsData([]);setActiveTheme(null);setTab("themes");setSessions([]);setEditingId(null); if(!menuPinned) setShowMenu(false); }, danger:true },
+          { icon:"🔄", txt:"Réinitialiser",    fn:()=>{ if(!confirm("Réinitialiser toutes les données ?")) return; setAtelier("");setPartenaire("");setAnimateur("");setParticipants("");setDateSession("");setNiveauPublic("");setQuestionsData([]);setActiveTheme(null);setTab("themes");setSessions([]);setEditingId(null);setEditingSessionId(null); if(!menuPinned) setShowMenu(false); }, danger:true },
         ]},
       ].map(section =>
         e('div',{key:section.label,style:{padding:"10px 14px 4px"}},
@@ -2413,6 +2426,7 @@ function App() {
           e('button',{
             onClick:()=>{
               setQuestionsData(uploadResults);
+              setEditingSessionId(null);
               setShowReview(false); setShowUpload(false);
               setUploadStatus("idle"); setUploadFiles([]); setUploadResults([]); setUploadErrors([]); setUploadProgress(0); setUploadSource("");
             },
@@ -2491,6 +2505,21 @@ function App() {
                 style:{position:"absolute",top:6,right:8,background:"none",border:"none",
                   color:"#cbd5e1",fontSize:14,cursor:"pointer",lineHeight:1}
               },"✕"),
+              s.id!=="current" && e('button',{
+                title:"Recharger cette session dans l'espace de travail pour la modifier",
+                onClick:ev=>{
+                  ev.stopPropagation();
+                  if(questionsData.length>0 && !window.confirm("Remplacer les données actuelles par celles de cette session ?")){return;}
+                  setAtelier(s.atelier||""); setPartenaire(s.partenaire||"");
+                  setDateSession(s.dateSession||""); setParticipants(s.participants||"");
+                  setQuestionsData(s.questions||[]);
+                  setEditingSessionId(s.id);
+                  setShowCompare(false);
+                },
+                style:{position:"absolute",bottom:8,right:8,background:"#e0f2fe",border:"none",
+                  borderRadius:6,color:"#0369a1",fontSize:11,fontWeight:700,
+                  cursor:"pointer",padding:"2px 7px",lineHeight:"18px"}
+              },"✏️ Charger"),
               e('div',{style:{fontSize:10,color:"#64748b",textTransform:"uppercase",
                 letterSpacing:1,marginBottom:6,fontWeight:600}},s.label),
               e('div',{style:{fontSize:36,fontWeight:900,color:col,lineHeight:1}},`${s.score}%`),
