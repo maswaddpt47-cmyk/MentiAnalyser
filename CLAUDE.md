@@ -75,6 +75,7 @@ Règles :
 3. Sur toute demande de correction d'un bug de calcul, livrer un **audit complet de tous les points d'impact** avant la première correction, pas des trouvailles ponctuelles.
 4. Signaler explicitement toute déviation d'une spec fournie ou toute décision de design prise seul, au moment où elle est prise.
 5. Poser une question de clarification dès qu'une demande est ambiguë ou sous-spécifiée plutôt que de trancher en silence.
+5bis. Utiliser des dates explicites (JJ/MM ou JJ/MM/AAAA) plutôt que des termes relatifs ("hier", "aujourd'hui", "la semaine dernière") — la perception du temps vient d'un contexte injecté en début de session, pas d'une horloge en temps réel, et devient peu fiable sur une session qui s'étale sur plusieurs jours.
 6. Toujours faire un `git pull` avant de lire ou modifier le moindre fichier. Respecter la politique de push du projet (`git push origin HEAD:main` depuis la branche de travail `claude/jolly-carson-fp7sjo`) et signaler tout conflit avec les instructions de session avant d'agir.
 7. Après toute reprise de session, relire l'état réel du fichier concerné avant de le modifier — ne jamais présumer qu'un correctif précédent est encore en place.
 8. Avant de pousser un changement visuel (CSS/layout), vérifier les interactions connues à risque (stacking context, overflow, position sticky/fixed) sur les zones sensibles existantes.
