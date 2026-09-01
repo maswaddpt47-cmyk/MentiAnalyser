@@ -306,6 +306,24 @@ function importJSON(file, callbacks) {
   reader.readAsText(file);
 }
 
+// ── IMPORT RAPPORT PIX (mémoire de synthèse finale) ────────────────────────────
+// Lit un export JSON produit par PIX Analyser (payload {version:"PIX_Analyser_v3", partenaire, stats, ...})
+// pour l'ajouter à la mémoire locale utilisée par la synthèse finale par organisme.
+function importPixJSON(file, callbacks) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.version !== "PIX_Analyser_v3" || !data.stats)
+        throw new Error("Ce fichier ne semble pas être un export PIX Analyser valide");
+      callbacks.onSuccess(data);
+    } catch(e) {
+      alert("❌ Impossible de lire ce rapport PIX : " + e.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
 // ── EMAIL DIRECT ──────────────────────────────────────────────────────────────
 function envoyerEmail(atelier, partenaire, animateur, participants, dateSession, niveauPublic, qs) {
   const score  = globalScore(qs);
@@ -509,7 +527,7 @@ function exportCSV(atelier, partenaire, qs=questions) {
   setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
 }
 
-function exportComparisonReport(sessions, atelier) {
+function exportComparisonReport(sessions, atelier, extraSectionHTML="") {
   const COMPARE_COLORS = ["#2563eb","#16a34a","#d97706","#dc2626","#7c3aed","#0891b2"];
   const allThemes = [...new Set(sessions.flatMap(s=>s.themes.map(t=>t.theme)))].sort();
   const today = new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
@@ -649,8 +667,9 @@ h2{font-size:14px;font-weight:800;color:#1e293b;margin:0 0 10px;text-transform:u
   <div class="sub">Généré le ${today} · ${sessions.length} session(s) comparée(s) · Conseil Départemental du Lot-et-Garonne</div>
 </div>
 <div class="wrap">
+  ${sessions.length > 0 ? `
   <div class="section">
-    <h2>Scores globaux</h2>
+    <h2>Scores globaux — Mentimeter</h2>
     <div class="donuts">${donutCards}</div>
   </div>
   <div class="section">
@@ -665,7 +684,8 @@ h2{font-size:14px;font-weight:800;color:#1e293b;margin:0 0 10px;text-transform:u
     <h2>Points forts &amp; axes d'amélioration par classe</h2>
     <div style="display:flex;gap:14px;flex-wrap:wrap">${swotCards}</div>
   </div>
-  <div class="legend">${legend}</div>
+  <div class="legend">${legend}</div>` : ''}
+  ${extraSectionHTML}
   <div class="ft">Document généré automatiquement — Analyse Mentimeter — Conseil Départemental du Lot-et-Garonne</div>
 </div>
 </body></html>`;
@@ -674,6 +694,59 @@ h2{font-size:14px;font-weight:800;color:#1e293b;margin:0 0 10px;text-transform:u
   w.document.write(html);
   w.document.close();
   setTimeout(()=>{ w.focus(); w.print(); }, 400);
+}
+
+// ── SYNTHÈSE FINALE PAR ORGANISME (mémoire multi-ateliers, multi-outils) ─────
+// Construit la section HTML récapitulant les rapports PIX importés pour un organisme.
+function buildPixSectionHTML(pixArchives) {
+  if (!pixArchives || pixArchives.length === 0) return '';
+  const rows = pixArchives.map(p => {
+    const date = p.exported ? new Date(p.exported).toLocaleDateString("fr-FR") : '?';
+    const stats = p.stats || {};
+    const fichiers = (p.fichiers || []).map(f => f.name).join(', ') || '—';
+    return `<tr>
+      <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:11px">${date}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:11px">${fichiers}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:11px;text-align:center">${stats.nbT1||0}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:11px;text-align:center">${stats.nbT2||0}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:11px;text-align:center">${stats.nbOS||0}</td>
+    </tr>`;
+  }).join('');
+  const totals = pixArchives.reduce((a,p) => {
+    const s = p.stats || {};
+    a.nbT1 += s.nbT1||0; a.nbT2 += s.nbT2||0; a.nbOS += s.nbOS||0;
+    return a;
+  }, {nbT1:0,nbT2:0,nbOS:0});
+  return `<div class="section">
+    <h2>Rapports PIX Analyser — ${pixArchives.length} export(s) importé(s)</h2>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase">Date export</th>
+        <th style="padding:7px 10px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase">Fichier(s)</th>
+        <th style="padding:7px 10px;font-size:10px;color:#64748b;text-transform:uppercase">Participants T1</th>
+        <th style="padding:7px 10px;font-size:10px;color:#64748b;text-transform:uppercase">Participants T2</th>
+        <th style="padding:7px 10px;font-size:10px;color:#64748b;text-transform:uppercase">One Shot</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr style="font-weight:800">
+        <td style="padding:7px 10px;font-size:11px" colspan="2">Cumul cycle</td>
+        <td style="padding:7px 10px;font-size:11px;text-align:center">${totals.nbT1}</td>
+        <td style="padding:7px 10px;font-size:11px;text-align:center">${totals.nbT2}</td>
+        <td style="padding:7px 10px;font-size:11px;text-align:center">${totals.nbOS}</td>
+      </tr></tfoot>
+    </table>
+  </div>`;
+}
+
+// Génère la synthèse finale d'un organisme : combine les ateliers Mentimeter archivés
+// (comparaison + radar + SWOT) et les rapports PIX Analyser importés (mémoire cross-app).
+function exportSyntheseFinale(sessionsForOrg, pixArchivesForOrg, organisme) {
+  if (sessionsForOrg.length === 0 && pixArchivesForOrg.length === 0) {
+    alert("Aucune donnée en mémoire pour cet organisme : archivez des sessions Menti et/ou importez des rapports PIX.");
+    return;
+  }
+  const pixSection = buildPixSectionHTML(pixArchivesForOrg);
+  exportComparisonReport(sessionsForOrg, `Synthèse finale — ${organisme}`, pixSection);
 }
 
 // ── EXPORT A — HTML avec graphiques SVG → impression PDF ─────────────────────
@@ -1394,8 +1467,19 @@ function App() {
     try { localStorage.setItem("menti_archives", JSON.stringify(sessions)); }
     catch {}
   }, [sessions]);
+  // Mémoire des rapports PIX importés (pour la synthèse finale par organisme)
+  const [pixArchives, setPixArchives] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("pix_archives") || "[]"); }
+    catch { return []; }
+  });
+  React.useEffect(() => {
+    try { localStorage.setItem("pix_archives", JSON.stringify(pixArchives)); }
+    catch {}
+  }, [pixArchives]);
   const [showCompare,   setShowCompare]    = useState(false);
   const [compareSelected, setCompareSelected] = useState(null);
+  const [showSynthese,  setShowSynthese]   = useState(false);
+  const [syntheseOrganisme, setSyntheseOrganisme] = useState("");
   const [editingSessionId, setEditingSessionId] = useState(null);
   const [qSearch,       setQSearch]        = useState("");
   const [qSort,         setQSort]          = useState({key:"taux",dir:"asc"});
@@ -1678,6 +1762,7 @@ function App() {
         { label:"📥 Importer", color:"#2563eb", items:[
           { icon:"📤", txt:"Importer PNG/ZIP",  fn:()=>{ setShowUpload(true); if(!menuPinned) setShowMenu(false); } },
           { icon:"📂", txt:"Import JSON",       fn:()=>{ document.getElementById('json-import-input').click(); if(!menuPinned) setShowMenu(false); } },
+          { icon:"🧩", txt:"Importer rapport PIX", fn:()=>{ document.getElementById('pix-import-input').click(); if(!menuPinned) setShowMenu(false); } },
         ]},
         { label:"📤 Exporter", color:"#0891b2", items:[
           { icon:"💾", txt:"Export JSON",       fn:()=>{ exportJSON(atelier,partenaire,animateur,participants,dateSession,questionsData,niveauPublic,sessions); if(!menuPinned) setShowMenu(false); } },
@@ -1703,6 +1788,7 @@ function App() {
             if(!menuPinned) setShowMenu(false);
           } },
           { icon:"📊", txt:`Comparer (${sessions.length+1})`, fn:()=>{ setCompareSelected(new Set([...sessions.map(s=>s.id),"current"])); setShowCompare(true); if(!menuPinned) setShowMenu(false); }, disabled:sessions.length===0, title:sessions.length===0?"Archivez au moins une session pour comparer":"" },
+          { icon:"🧾", txt:"Synthèse finale par organisme", fn:()=>{ setSyntheseOrganisme(""); setShowSynthese(true); if(!menuPinned) setShowMenu(false); }, disabled: sessions.length===0 && pixArchives.length===0, title: (sessions.length===0 && pixArchives.length===0) ? "Archivez des sessions Menti et/ou importez des rapports PIX pour générer une synthèse" : "" },
         ]},
         { label:"⚙️ Gérer", color:"#64748b", items:[
           { icon:"⚙️", txt:`Seuils ${seuilBas}/${seuilHaut}`, fn:()=>{ setShowSeuils(s=>!s); if(!menuPinned) setShowMenu(false); } },
@@ -2351,6 +2437,28 @@ function App() {
         });
       }
     }),
+    // Input caché pour import d'un rapport PIX (mémoire de synthèse finale)
+    e('input',{
+      id:"pix-import-input", type:"file", accept:".json,application/json",
+      style:{display:"none"},
+      onChange: ev => {
+        const f = ev.target.files?.[0];
+        if (!f) return;
+        importPixJSON(f, {
+          onSuccess: data => {
+            setPixArchives(prev => {
+              const dedupKey = p => `${p.partenaire}|${p.exported}`;
+              if (prev.some(p => dedupKey(p) === dedupKey(data))) {
+                alert("Ce rapport PIX est déjà présent dans la mémoire.");
+                return prev;
+              }
+              return [...prev, data];
+            });
+            ev.target.value = "";
+          }
+        });
+      }
+    }),
     // ── Bandeau freezé (header + tuiles + onglets)
     e('div',{className:"sticky-wrapper",style:{position:"sticky",top:0,zIndex:200,boxShadow:"0 4px 16px rgba(30,58,138,0.15)"}},
       header,
@@ -2656,6 +2764,56 @@ function App() {
         )
       )
     );
+    })(),
+
+    // ── SYNTHÈSE FINALE PAR ORGANISME (mémoire cycle complet, Menti + PIX)
+    showSynthese && (() => {
+      const organismes = listOrganismes(sessions, pixArchives);
+      const sessionsForOrg = filterSessionsByPartenaire(sessions, syntheseOrganisme);
+      const pixForOrg = filterPixArchivesByPartenaire(pixArchives, syntheseOrganisme);
+      return e('div',{
+        style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",
+          display:"flex",alignItems:"flex-start",justifyContent:"center",
+          zIndex:1000,padding:"24px 16px",overflowY:"auto"},
+        onClick: ev => { if(ev.target===ev.currentTarget) setShowSynthese(false); }
+      },
+      e('div',{style:{background:"#fff",borderRadius:20,padding:24,
+        width:"100%",maxWidth:560,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}},
+        e('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}},
+          e('h2',{style:{fontSize:16,fontWeight:800,color:"#1e293b"}},"🧾 Synthèse finale par organisme"),
+          e('button',{onClick:()=>setShowSynthese(false),
+            style:{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94a3b8"}},"✕")
+        ),
+        e('p',{style:{fontSize:12,color:"#64748b",marginBottom:14}},
+          "Regroupe en un seul rapport tous les ateliers Mentimeter archivés et tous les rapports PIX Analyser importés pour l'organisme choisi — la mémoire du cycle complet."),
+        e('label',{style:{fontSize:11,fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:.5}},"Organisme"),
+        organismes.length===0
+          ? e('p',{style:{fontSize:12,color:"#dc2626",marginTop:6}},"Aucun organisme en mémoire — archivez une session (avec le champ Partenaire renseigné) ou importez un rapport PIX.")
+          : e('select',{value:syntheseOrganisme,onChange:ev=>setSyntheseOrganisme(ev.target.value),
+              style:{width:"100%",marginTop:6,marginBottom:16,padding:"9px 12px",borderRadius:8,
+                border:"1px solid #cbd5e1",fontSize:13,fontFamily:"inherit"}},
+              e('option',{value:""},"— Choisir un organisme —"),
+              ...organismes.map(o=>e('option',{key:o,value:o},o))
+            ),
+        syntheseOrganisme && e('div',{style:{background:"#f8fafc",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#475569"}},
+          e('div',null,`📌 ${sessionsForOrg.length} session(s) Mentimeter archivée(s)`),
+          e('div',null,`🧩 ${pixForOrg.length} rapport(s) PIX importé(s)`)
+        ),
+        e('div',{style:{display:"flex",justifyContent:"flex-end",gap:8}},
+          e('button',{onClick:()=>setShowSynthese(false),
+            style:{background:"#f1f5f9",border:"none",borderRadius:10,
+              padding:"9px 18px",fontWeight:600,fontSize:13,cursor:"pointer",color:"#475569"}
+          },"Annuler"),
+          e('button',{
+            onClick:()=>exportSyntheseFinale(sessionsForOrg, pixForOrg, syntheseOrganisme),
+            disabled: !syntheseOrganisme || (sessionsForOrg.length===0 && pixForOrg.length===0),
+            style:{background:(!syntheseOrganisme || (sessionsForOrg.length===0 && pixForOrg.length===0))?"#cbd5e1":"#0f766e",
+              color:"#fff",border:"none",borderRadius:10,padding:"9px 18px",fontWeight:700,fontSize:13,
+              cursor:(!syntheseOrganisme || (sessionsForOrg.length===0 && pixForOrg.length===0))?"not-allowed":"pointer"}
+          },"🖨️ Générer la synthèse")
+        )
+      )
+      );
     })(),
 
     // ── MODE PRÉSENTATION
