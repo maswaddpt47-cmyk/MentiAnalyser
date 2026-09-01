@@ -1,6 +1,9 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { byTheme, globalScore } = require("./logic.js");
+const {
+  byTheme, globalScore,
+  filterSessionsByPartenaire, summarizePixArchive, filterPixArchivesByPartenaire, listOrganismes
+} = require("./logic.js");
 
 const q = (theme, correct, total, taux) => ({ theme, correct, total, taux: taux !== undefined ? taux : (total > 0 ? Math.round(correct/total*100) : 0) });
 
@@ -63,5 +66,69 @@ describe("byTheme", () => {
   it("pas de division par zéro si count=0", () => {
     // ne devrait pas arriver (total=0 filtré), mais défense en profondeur
     assert.doesNotThrow(() => byTheme([q("A",0,0,0)]));
+  });
+});
+
+describe("filterSessionsByPartenaire", () => {
+  const s = (partenaire) => ({ id: Math.random(), partenaire, questions: [] });
+
+  it("undefined → tableau vide", () => assert.deepEqual(filterSessionsByPartenaire(undefined, "X"), []));
+  it("pas de partenaire → renvoie toutes les sessions", () => {
+    const sessions = [s("A"), s("B")];
+    assert.equal(filterSessionsByPartenaire(sessions, "").length, 2);
+  });
+  it("filtre sur le partenaire exact", () => {
+    const sessions = [s("Mairie"), s("École"), s("Mairie")];
+    const res = filterSessionsByPartenaire(sessions, "Mairie");
+    assert.equal(res.length, 2);
+    assert.ok(res.every(x => x.partenaire === "Mairie"));
+  });
+  it("aucune session ne correspond → tableau vide", () => {
+    assert.deepEqual(filterSessionsByPartenaire([s("A")], "Z"), []);
+  });
+});
+
+describe("summarizePixArchive", () => {
+  it("payload vide/undefined → null", () => assert.equal(summarizePixArchive(undefined), null));
+  it("normalise un export PIX complet", () => {
+    const payload = {
+      partenaire: "Mairie", exported: "2026-01-15T10:00:00.000Z",
+      stats: { nbT1: 12, nbT2: 8, nbOS: 3 },
+      fichiers: [{ name: "export1.csv" }, { name: "export2.csv" }]
+    };
+    const res = summarizePixArchive(payload);
+    assert.equal(res.partenaire, "Mairie");
+    assert.equal(res.nbT1, 12);
+    assert.equal(res.nbT2, 8);
+    assert.equal(res.nbOS, 3);
+    assert.deepEqual(res.fichiers, ["export1.csv", "export2.csv"]);
+  });
+  it("champs manquants → valeurs par défaut", () => {
+    const res = summarizePixArchive({});
+    assert.equal(res.partenaire, "");
+    assert.equal(res.nbT1, 0);
+    assert.deepEqual(res.fichiers, []);
+  });
+});
+
+describe("filterPixArchivesByPartenaire", () => {
+  const p = (partenaire) => ({ partenaire, stats: {} });
+
+  it("undefined → tableau vide", () => assert.deepEqual(filterPixArchivesByPartenaire(undefined, "X"), []));
+  it("filtre sur le partenaire exact", () => {
+    const archives = [p("Mairie"), p("École")];
+    assert.equal(filterPixArchivesByPartenaire(archives, "École").length, 1);
+  });
+});
+
+describe("listOrganismes", () => {
+  it("aucune donnée → tableau vide", () => assert.deepEqual(listOrganismes([], []), []));
+  it("croise sessions Menti et archives PIX, dédoublonne et trie", () => {
+    const sessions = [{ partenaire: "Mairie" }, { partenaire: "École" }];
+    const pixArchives = [{ partenaire: "Mairie" }, { partenaire: "Association" }];
+    assert.deepEqual(listOrganismes(sessions, pixArchives), ["Association", "École", "Mairie"]);
+  });
+  it("ignore les partenaires vides", () => {
+    assert.deepEqual(listOrganismes([{ partenaire: "" }, { partenaire: "Mairie" }], []), ["Mairie"]);
   });
 });

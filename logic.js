@@ -36,6 +36,48 @@ const globalScore = function(qs) {
   return 0;
 };
 
+// filterSessionsByPartenaire — sous-ensemble des sessions archivées pour un organisme donné
+// (mémoire de synthèse finale : regroupe tous les ateliers Menti d'un même organisme)
+const filterSessionsByPartenaire = function(sessions, partenaire) {
+  if (!sessions) sessions = [];
+  if (!partenaire) return sessions.slice();
+  return sessions.filter(function(s) { return (s.partenaire || "") === partenaire; });
+};
+
+// summarizePixArchive — normalise un export JSON PIX Analyser en résumé exploitable
+// pour la synthèse finale (un export PIX = un ou plusieurs ateliers pour un partenaire)
+const summarizePixArchive = function(pixPayload) {
+  if (!pixPayload) return null;
+  var stats = pixPayload.stats || {};
+  return {
+    partenaire: pixPayload.partenaire || "",
+    exported: pixPayload.exported || "",
+    nbT1: stats.nbT1 || 0,
+    nbT2: stats.nbT2 || 0,
+    nbOS: stats.nbOS || 0,
+    fichiers: (pixPayload.fichiers || []).map(function(f) { return f.name; })
+  };
+};
+
+// filterPixArchivesByPartenaire — sous-ensemble des exports PIX importés pour un organisme
+const filterPixArchivesByPartenaire = function(pixArchives, partenaire) {
+  if (!pixArchives) pixArchives = [];
+  if (!partenaire) return pixArchives.slice();
+  return pixArchives.filter(function(p) { return (p.partenaire || "") === partenaire; });
+};
+
+// listOrganismes — liste triée des organismes (partenaires) connus, croisant sessions Menti
+// et archives PIX importées, pour peupler le sélecteur de synthèse finale
+const listOrganismes = function(sessions, pixArchives) {
+  var set = {};
+  (sessions || []).forEach(function(s) { if (s.partenaire) set[s.partenaire] = true; });
+  (pixArchives || []).forEach(function(p) { if (p.partenaire) set[p.partenaire] = true; });
+  return Object.keys(set).sort(function(a, b) { return a.localeCompare(b, "fr"); });
+};
+
 if (typeof module !== "undefined") {
-  module.exports = { byTheme, globalScore };
+  module.exports = {
+    byTheme, globalScore,
+    filterSessionsByPartenaire, summarizePixArchive, filterPixArchivesByPartenaire, listOrganismes
+  };
 }
