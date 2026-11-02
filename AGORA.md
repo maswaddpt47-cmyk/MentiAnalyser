@@ -26,6 +26,17 @@ du sens pédagogique à faire par une IA d'un autre éditeur.
 la contradiction indépendante reste à faire ; aucun diagnostic médical.
 **Où regarder** : prevention.js, prevention-ui.js, MentiAnalyser.html.
 
+### Validation de l'auteur — 02/11/2026
+
+69 tests verts sous Node 20, dont 5 tests prévention. Mutation : une confusion
+pourcentage/effectif fait échouer la suite. Parcours Chromium sur données
+fictives : PNG et ZIP avec PDF écarté, API simulée, relecture, rapport PDF,
+JSON et persistance ; largeurs 390/1280 sans débordement. Les mêmes versions
+des bibliothèques ont été préchargées depuis jsDelivr pour les tests locaux,
+car unpkg/cdnjs sont refusés dans cette instance. Aucun appel IA réel ni
+déploiement vérifié. Cette validation ne vaut pas contradiction indépendante.
+Le push est refusé par l'auto-review : publication en attente d'accord explicite.
+
 ### Réponse — à compléter par un contradicteur indépendant
 
 Auteur, commit lu, verdict, constat avec preuve, amendement éventuel.

@@ -14,6 +14,8 @@
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <script src="utils.js"></script>
 <script src="logic.js"></script>
+<script src="prevention.js"></script>
+<script src="prevention-ui.js"></script>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -298,6 +300,8 @@ function importJSON(file, callbacks) {
       const data = JSON.parse(ev.target.result);
       if (!Array.isArray(data.questions) || data.questions.length === 0)
         throw new Error("Fichier JSON invalide ou vide");
+      if (data.version === Prevention.VERSION || data.questions.some(q => q.kind === "survey" || Array.isArray(q.options)))
+        throw new Error("Ce questionnaire doit être ouvert dans le mode Usages et prévention.");
       callbacks.onSuccess(data);
     } catch(e) {
       alert("❌ Impossible de lire ce fichier JSON : " + e.message);
@@ -1280,7 +1284,7 @@ async function fetchAvecRetry(url, options, maxRetries=3) {
   }
 }
 
-async function analyserPNG(files, apiKey, setStatus, setProgress, setRetryInfo, setResults, setErrors, setQuestionsData, sourceContext="") {
+async function analyserPNG(files, apiKey, setStatus, setProgress, setRetryInfo, setResults, setErrors, setQuestionsData, sourceContext="", analysisMode="quiz") {
   setStatus("loading");
   setProgress(0);
   setRetryInfo(null);
@@ -1304,19 +1308,21 @@ async function analyserPNG(files, apiKey, setStatus, setProgress, setRetryInfo, 
 
       // ── Prompt selon le mode
       let promptText;
-      if (isMenti) {
+      if (analysisMode === "prevention") {
+        promptText = Prevention.prompt;
+      } else if (isMenti) {
         // Mode Mentimeter — comportement d'origine
         promptText = isPDF
           ? `Ce PDF contient les résultats d'un quiz Mentimeter (plusieurs slides/pages). Pour CHAQUE question visible, extrais les informations et réponds UNIQUEMENT avec un tableau JSON valide, rien d'autre :
 [{"q":"texte question","correct":nb,"total":nb,"taux":pourcentage,"theme":"Thème"}, ...]
 Pour "theme", choisis parmi : ${THEMES_CONNUS.join(', ')}. Si aucun ne correspond, propose un thème court.
-IMPORTANT : inclus TOUTES les questions à choix multiples (QCM), même si elles semblent subjectives ou portent sur des habitudes — ce qui compte c'est qu'il y ait UNE bonne réponse visuellement marquée (barre surlignée, ✓, étoile, couleur distincte). Exclure UNIQUEMENT : word cloud (nuage de mots), texte libre, "No responses collected", et les slides sans résultats chiffrés.
+IMPORTANT : inclus TOUTES les questions à choix multiples (QCM), même si elles semblent subjectives ou portent sur des habitudes — ce qui compte c'est qu'il y ait UNE bonne réponse visuellement marquée (mention explicite de correction ou coche ✓ ; une couleur de barre seule ne suffit pas). Exclure UNIQUEMENT : word cloud (nuage de mots), texte libre, "No responses collected", et les slides sans résultats chiffrés.
 Si aucune question éligible n'est visible, réponds : []`
           : `C'est une capture d'écran d'un quiz Mentimeter. Extrais ces informations et réponds UNIQUEMENT en JSON valide, rien d'autre :
 {"q":"texte exact de la question","correct":nombre_bonnes_réponses,"total":nombre_total_réponses,"taux":pourcentage_entier,"theme":"Thème"}
 Pour le champ "theme", choisis le plus approprié parmi : ${THEMES_CONNUS.join(', ')}.
 Si aucun ne correspond, propose un thème court en français.
-IMPORTANT : inclus les QCM même si la question porte sur des habitudes ou semble subjective — l'essentiel est qu'une réponse soit visuellement marquée comme correcte (barre surlignée, ✓, couleur différente). Exclure UNIQUEMENT : word cloud, texte libre, "No responses collected", slides sans résultats.
+IMPORTANT : inclus les QCM même si la question porte sur des habitudes ou semble subjective — l'essentiel est qu'une réponse soit visuellement marquée comme correcte (mention explicite de correction ou coche ✓ ; une couleur seule ne suffit pas). Exclure UNIQUEMENT : word cloud, texte libre, "No responses collected", slides sans résultats.
 Si vraiment aucune réponse correcte n'est identifiable visuellement, réponds : {"erreur":"non reconnu"}`;
       } else {
         // Mode source libre — prompt générique
@@ -1339,7 +1345,7 @@ Règles :
 
       const body = JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: isPDF ? 2000 : 400,
+        max_tokens: analysisMode === "prevention" ? (isPDF ? 12000 : 4000) : (isPDF ? 2000 : 400),
         messages: [{ role:"user", content:[ contentBlock, { type:"text", text:promptText } ] }]
       });
 
@@ -1369,6 +1375,7 @@ Règles :
       const data = await resp.json();
       if (data.error) throw new Error(data.error.message);
 
+      if (data.stop_reason === "max_tokens") throw new Error("Extraction incomplète : limite de sortie atteinte. Réduisez le nombre de pages du PDF.");
       const raw   = data.content?.[0]?.text?.trim() || "";
       const clean = raw.replace(/```json\b|```/g, "").trim();
       let parsed;
@@ -1389,6 +1396,13 @@ Règles :
           continue;
         }
         if (!item.q) { errors.push({ file: files[i].name, motif: "JSON incomplet" }); continue; }
+        if (analysisMode === "prevention") {
+          const survey = Prevention.normalizeQuestion(item, files[i].name);
+          const previous = results.find(r => r.q.toLowerCase().trim() === survey.q.toLowerCase().trim());
+          if (previous) errors.push({file:files[i].name,motif:"Question déjà extraite : vérifier les sources, aucun cumul automatique."});
+          else results.push({...survey,id:results.length+1});
+          continue;
+        }
         const correct = parseInt(item.correct) || 0;
         const total   = parseInt(item.total)   || 0;
         const taux    = total > 0 ? Math.min(100, Math.round(correct / total * 100)) : Math.min(100, parseInt(item.taux) || 0);
@@ -2910,7 +2924,25 @@ function App() {
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+function ApplicationModes() {
+  const e = React.createElement;
+  const [mode,setMode] = React.useState(() => {
+    try { return localStorage.getItem('menti_mode') === 'quiz' ? 'quiz' : 'prevention'; }
+    catch { return 'prevention'; }
+  });
+  const [visited,setVisited] = React.useState(() => new Set([mode]));
+  function choose(value) {
+    setMode(value);setVisited(prev=>new Set([...prev,value]));
+    try {localStorage.setItem('menti_mode',value);} catch {}
+  }
+  return e('div',null,
+    e('nav',{'aria-label':'Type de questionnaire',style:{padding:'12px 16px',background:'#fff',borderBottom:'1px solid #cbd5e1',display:'flex',gap:10,flexWrap:'wrap'}},
+      ...[['prevention','Usages et prévention'],['quiz','Quiz de connaissances']].map(([value,label])=>
+        e('button',{key:value,'aria-pressed':mode===value,onClick:()=>choose(value),style:{padding:'10px 15px',border:'1px solid #197d89',borderRadius:8,background:mode===value?'#197d89':'#fff',color:mode===value?'#fff':'#145b64',fontWeight:700}},label))),
+    visited.has('prevention') && e('div',{hidden:mode!=='prevention'},e(PreventionApp,{analyse:analyserPNG,unlock:verifyAndDecrypt})),
+    visited.has('quiz') && e('div',{hidden:mode!=='quiz'},e(App)));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ApplicationModes));
 
 } // end boot()
 </script>

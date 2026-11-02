@@ -1,13 +1,28 @@
 # CHANTIERS — MentiAnalyser
 
-État au **02/11/2026**, base `13d762d`.
+État au **02/11/2026**, base distante `13d762d`, cadrage local `e9a79cf`.
 
 ## En cours
 
-- Séparer les questionnaires d'usages des quiz : options, dénominateurs,
-  contrôle avant application, rapport descriptif destiné à la direction.
+- Publication du mode prévention en attente d'autorisation explicite :
+  l'auto-review a refusé le push du cadrage vers main. Aucun push réalisé.
 - AG-001 ouvert dans AGORA.md : contradiction indépendante à relayer à une
   IA d'un autre éditeur ; les définitions métier restent à l'utilisateur.
+
+## État vérifié
+
+- Mode prévention distinct, options éditables, inconnus conservés, sélection
+  des constats, JSON versionné et rapport imprimable avec annexe et réserves.
+- 69 tests passent sous Node 20, dont 5 nouveaux ; confusion effectif /
+  pourcentage détectée par mutation d'une copie temporaire.
+- Chromium : PNG et ZIP fictifs, ancien PDF du ZIP ignoré, API simulée,
+  contrôle puis rapport/PDF, JSON, persistance et séparation des modes.
+  Aucun débordement horizontal à 390 px et 1280 px.
+- Les CDN unpkg/cdnjs restent bloqués dans cette instance ; les tests
+  navigateur utilisent les mêmes versions publiques préchargées depuis
+  jsDelivr. Extraction IA réelle et déploiement non validés.
+- Les fichiers de travail de la classe sont dans /workspace/output,
+  hors dépôt : ne pas les ajouter à Git. Relecture de l'animateur requise.
 
 ## Points à ne pas défaire
 
