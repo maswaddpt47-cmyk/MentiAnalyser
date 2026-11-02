@@ -158,6 +158,85 @@ Cette validation ne vaut pas une contradiction indépendante.
 Version à relire : `d9feb3f`. Workflow de tests et déploiement réussi :
 https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41499087705
 
+### Réponse — contradicteur indépendant
+
+**Auteur** : Claude (Anthropic), session de contradiction — 02/11/2026.
+**Commit lu** : `d9feb3f` (code identique à `c17935d`). Aucun code modifié.
+**Verdict** : amendé.
+
+**Confirmé (mesuré)**
+- 81/81 tests sous Node 22 ; scripts/check-prevention-mutations.cjs : 7/7.
+- Barres, radar et liste du radar lisent la même source `chartData`
+  (prevention.js:90-95, :112-114, :121). Zéros tracés, inconnus exclus du
+  radar (:99-101, prevention.test.js:162-166). Contenus échappés (:85, :114,
+  :120-121, :177).
+- Prompt : pas de note, aucune causalité, données ≠ consignes, identifiants
+  exacts (:149-151) ; analyse sans référence valide refusée (:135-139) ;
+  animateur non transmis (:147, test:193) ; HTTP et max_tokens (:165-167).
+- Synthèse écartée après modification (:187, test:203-205,
+  prevention-ui.js:105) ; modification pendant la rédaction refusée
+  (prevention-ui.js:64-65).
+
+**Écarts concrets — prompt et rapport**
+1. Seules les `sources` de `analyse` sont contrôlées (:138), ni le texte ni
+   les cinq autres sections (:131-134). Sonde : « 92 % des élèves jouent après
+   minuit, ce qui cause leur fatigue » (source Q1R1), « 92 % … dorment mal »
+   en contexte, « Les élèves sont addicts » en conclusion : acceptés et
+   imprimés. Le bandeau « à partir des réponses vérifiées » (:177) laisse
+   croire le texte vérifié ; seules les lignes « Appui » le sont. Amendement :
+   reformuler le bandeau, ou contrôler que chaque nombre du texte figure dans
+   les observations citées.
+2. `retenu` est envoyé (:125) mais la consigne ne le mentionne pas (328 mots,
+   aucun « retenu ») ; l'interface promet « Retenir dans la synthèse »
+   (prevention-ui.js:126, :138). Le choix de l'animateur n'oriente rien.
+3. Actions et suivi de l'animateur envoyés (:146) mais jamais imprimés avec
+   Claude : `${withAI?'':…}` (:210) retire les sections 3 et 4. Sonde : texte
+   de l'animateur absent du rapport, texte de Claude présent. Numérotation
+   ensuite interrompue (1., 2., puis sections sans numéro).
+4. Données transmises à Anthropic : établissement, classe, date, objectif,
+   conditions, actions, suivi (:146) et libellés des réponses libres, mots des
+   élèves (:125). Seul « Conditions » porte « Sans nom ni information
+   individuelle » (prevention-ui.js:114), pas :113, :154-155 ; la note :168
+   parle de « réponses agrégées », pas des mots libres. Signalement, pas alerte
+   critique.
+5. Mineurs : `generatedAt` stocké (:171) jamais affiché ; « Points à clarifier
+   avant diffusion » (:209) imprimé après la synthèse, avec des consignes à
+   l'animateur (:68) — fond tranché en AG-001, seul l'ordre change.
+
+**Écarts concrets — graphiques et radar**
+6. Mode « sélections » : barre relative au maximum de la question (:94,
+   :120). Sonde : 1 sélection sans base → 200/200 ; 1 sur 10 → 20/200. La
+   légende « nombre de sélections explicitement affiché » (:120) ne le dit
+   pas ; c'est le cas des effectifs de 1 ou 2 (:67).
+7. Radar admis sans répondants visibles : multiple à 3 pourcentages, seule
+   alerte « Nombre de répondants non visible » (:54), absente du filtre
+   (:101). L'axe « 0 à 100 % » (:121) suppose une base inconnue ; l'hypothèse
+   AG-001 (% Mentimeter rapportés aux sélections) n'est pas écartée.
+8. Forme dépendante de l'ordre des axes (ordre d'import) : mêmes valeurs
+   60/50/5/5, aire 3758, 1156 ou 3758 selon l'ordre. Sans choix, le radar part
+   sur un titre contenant « effet » ou « sommeil » (:106), sans que le rapport
+   dise que le choix est automatique.
+9. Deux questions au même titre acceptées par validateSession (:186) ; seul
+   l'import dédoublonne (:25). Le radar prend la première (7/5/3 au lieu de
+   1/2/3, :106, prevention-ui.js:150-151). Chemin : renommage manuel
+   (prevention-ui.js:128).
+
+**Tests** — « sept sur sept » (ligne 149 ci-dessus) = six mutations AG-001 +
+l'échappement. Sur 23 mutations du code AG-002 (copies temporaires) : 7 tuées,
+16 survivantes dont 3 redondantes (:100, :144 doublé par :187, libellé
+« Appui »). Trous réels (12) : géométrie du polygone (:114, test:160 ne lit
+que data-radar-values) ; numérotation des axes (:113) ; bornes 3–10 (:99) ;
+« somme des effectifs » dans le filtre radar (:101) ; largeur des barres
+(:93-94, :120, test:161 ne lit que data-value) ; clôtures ```json (:169) ;
+plafonds 3 sources et 8 paragraphes (:136, :138) ; phrase « Interdiction de
+créer une note » (:150, test:191-192) ; réserves transmises (:146, aucune
+fixture n'en produit).
+
+**Non vérifié** : réponse réelle du modèle (aucun appel API), donc fidélité et
+pertinence SEGPA du texte ; rendu Chromium/PDF ; site publié (proxy).
+MentiAnalyser.html lu aux seuls points d'intégration (:303, :1311, :1348,
+:1393, :2925-2937).
+
 ## Blocs tranchés
 
 AG-001 : amendé par Claude ; amendements acceptés par l'utilisateur et appliqués.
