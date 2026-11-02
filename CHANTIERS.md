@@ -1,21 +1,36 @@
 # CHANTIERS — MentiAnalyser
 
-État au **02/11/2026**, AG-002 publié et workflow réussi pour `d9feb3f`.
+État au **02/11/2026**, base relue `0c6302c`, application publiée `d9feb3f`.
 
 ## En cours
 
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
-- AG-002 ouvert : rédaction personnalisée et radar descriptif à faire relire
-  par Claude, IA d'un autre éditeur ; fournir la phrase relais à l'utilisateur.
+- AG-002 : réponse indépendante de Claude reçue dans `0c6302c`, verdict
+  **amendé**. Réponse conservée intégralement dans AGORA.md. Le pull n'a
+  modifié aucun code ; constats du contradicteur à reproduire avant correctif.
+- Rapport Claude : clarifier le statut non vérifié de la prose, respecter les
+  constats retenus, conserver les actions et le suivi saisis par l'animateur ;
+  expliciter les textes libres et le contexte transmis à Anthropic. Mettre
+  les réserves avant l'analyse et afficher la date de génération.
+- Graphiques/radar : expliciter l'échelle des barres sans base de répondants,
+  vérifier l'éligibilité des pourcentages sans base connue, rendre le choix
+  et l'ordre des axes explicites, distinguer les questions au titre identique.
+- Compléter les tests ciblés de géométrie et de bornes des graphiques, de
+  transmission des réserves et des limites de la réponse Claude selon AG-002.
+  Ces réserves techniques ne sont pas en attente d'une nouvelle autorisation
+  générale ; les changements de sens ou de portée restent à expliquer.
 
 ## État vérifié
 
 - Mode prévention distinct, options éditables, inconnus conservés, sélection
   des constats, JSON versionné et rapport imprimable avec annexe et réserves.
-- 81 tests passent sous Node 20, dont 17 prévention ; sept mutations détectées
-  sur sept par scripts/check-prevention-mutations.cjs, désormais dans la CI.
+- 81 tests passaient sous Node 20 sur `d9feb3f`, dont 17 prévention ; sept
+  mutations détectées sur sept (six d'AG-001 + échappement), dans la CI. Cela
+  ne mesure pas toute la couverture d'AG-002 : Claude rapporte des mutations
+  supplémentaires survivantes, détaillées dans sa réponse ; non rejouées
+  lors de ce pull documentaire.
 - Chromium : PNG et ZIP fictifs, ancien PDF du ZIP ignoré, API simulée,
   contrôle puis rapport/PDF, JSON, persistance et séparation des modes ;
   conditions de passation et alerte petits effectifs sans masquage vérifiées.
