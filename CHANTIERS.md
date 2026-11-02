@@ -1,13 +1,17 @@
 # CHANTIERS — MentiAnalyser
 
-État au **02/11/2026**, base relue `6cc87b2`, amendements d'AG-002 vérifiés.
+État au **02/11/2026**, amendements d’AG-002 publiés dans `ec61cdb`.
 
 ## En cours
 
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
-- Publier les amendements d'AG-002 et vérifier leur workflow de déploiement.
+- Déploiement de `ec61cdb` : tests GitHub réussis (13 s), étape Pages encore
+  « In progress / Deploying to github-pages » après plus de huit minutes.
+  Cause de la lenteur non déterminée ; aucun échec signalé. Délai de contrôle
+  dépassé, ne pas annoncer cette version en ligne. Reprendre le contrôle :
+  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41508087944
 
 ## État vérifié
 
@@ -30,8 +34,8 @@
 - Rapport Claude et visualisations publiés : workflow du commit `d9feb3f`
   terminé avec WORKFLOW_RUN_CONCLUSION_SUCCESS (test et déploiement) :
   https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41499087705
-  Ces preuves concernent la version précédente ; le nouveau workflow reste
-  à vérifier après publication des amendements.
+  Cette preuve concerne la version précédente. Les amendements sont poussés
+  dans `ec61cdb` ; leur étape Pages est encore en cours (voir En cours).
 - Les fichiers de travail de la classe sont dans /workspace/output,
   hors dépôt : ne pas les ajouter à Git. Relecture de l'animateur requise.
 
