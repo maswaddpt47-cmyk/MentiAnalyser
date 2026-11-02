@@ -7,21 +7,23 @@
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
-- Déploiement de `ec61cdb` : tests GitHub réussis (13 s), publication Pages
-  échouée après 10 min 16 s : « Timeout reached, aborting! ». Cause du délai
-  non déterminée ; aucun défaut de code signalé. La tentative `2ec6036` est
-  ensuite refusée (HTTP 400) car l'ancien déploiement reste actif côté Pages.
-  Récupération ciblée par scripts/cancel-expired-pages.cjs via le jeton
-  éphémère du workflow (permissions pages:write existantes). Vérifier le
-  résultat, puis retirer l'étape temporaire après libération du déploiement.
-  Tentative précédente :
-  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41508087944
+- Publication Pages bloquée côté GitHub : le workflow de `ec61cdb` expire
+  après dix minutes, puis les créations suivantes sont refusées HTTP 400 :
+  « due to in progress deployment. Please cancel ec61cdb… first ».
+  Les workflows de récupération `6aa5a80` et `a0b3f55` n'ont pas libéré cette
+  demande. La récupération temporaire et sa permission actions:read ont été
+  retirées ; ne pas multiplier des relances identiques. Dernière preuve :
+  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41511879461
+  Prochaine action externe : faire annuler/débloquer la demande Pages
+  `ec61cdb16494c902389fcee989046e26e4e6a09f` dans GitHub, puis relancer
+  Deploy to GitHub Pages. Signalement préparé hors dépôt dans
+  /workspace/output/Signalement_blocage_GitHub_Pages.txt.
 
 ## État vérifié
 
 - Mode prévention distinct, options éditables, inconnus conservés, sélection
   des constats, JSON versionné et rapport imprimable avec annexe et réserves.
-- 93 tests passent sous Node 20 (90 application, 3 récupération Pages) ; 22 mutations ciblées
+- 90 tests application passent sous Node 20 ; 22 mutations ciblées
   détectées sur 22 dans la CI. Cela ne mesure pas une couverture exhaustive.
 - Chromium : PNG et ZIP fictifs, ancien PDF du ZIP ignoré, API simulée,
   contrôle puis rapport/PDF, JSON, persistance et séparation des modes ;
@@ -72,3 +74,6 @@
 - Communication : finir chaque message par la suite concrète, y compris
   après un pull ou un blocage ; consigne enregistrée dans MD-LIB règle 18
   (`bcfed2e`) et dans CLAUDE.md.
+
+- Consigne de communication enregistrée dans MD-LIB (`bcfed2e`) et ici :
+  chaque message se termine par la suite concrète ou l'état terminé.

@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
   pages: write
   id-token: write
 
@@ -26,7 +25,6 @@ jobs:
       - run: node --test utils.test.js
       - run: node --test logic.test.js
       - run: node --test prevention.test.js
-      - run: node --test scripts/cancel-expired-pages.test.cjs
       - run: node scripts/check-prevention-mutations.cjs
 
   deploy:
@@ -38,11 +36,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Libérer le déploiement Pages expiré
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/cancel-expired-pages.cjs
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
