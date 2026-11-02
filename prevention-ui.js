@@ -5,7 +5,7 @@
     const e = React.createElement, P = Prevention;
     const [data, setData] = React.useState(() => {
       try { return P.validateSession(JSON.parse(localStorage.getItem('menti_prevention_v1'))); }
-      catch { return {version:P.VERSION,meta:{title:'Usages des écrans et besoins de prévention',school:'',group:'',date:'',facilitator:'',classSize:null,objective:'',actions:'',followup:''},questions:[]}; }
+      catch { return {version:P.VERSION,meta:{title:'Usages des écrans et besoins de prévention',school:'',group:'',date:'',facilitator:'',classSize:null,objective:'',conditions:'',actions:'',followup:''},questions:[]}; }
     });
     const [draft, setDraft] = React.useState(null);
     const [files,setFiles] = React.useState([]);
@@ -88,7 +88,8 @@
           field('Classe / groupe',meta.group,v=>{setAck(false);setMeta('group',v);},'text',{placeholder:'Ex. 6ᵉ SEGPA'}),
           field('Effectif total de la classe',meta.classSize,v=>{setAck(false);setMeta('classSize',v===''?null:Number(v));},'number',{min:1,step:1}),
           field('Date du questionnaire',meta.date,v=>setMeta('date',v),'date'),field('Animateur / animatrice',meta.facilitator,v=>setMeta('facilitator',v))),
-        e('label',{style:{display:'block',marginTop:12}},'Objectif de l’atelier',e('textarea',{value:meta.objective,onChange:ev=>setMeta('objective',ev.target.value),placeholder:'Recueillir les habitudes, ouvrir le dialogue et adapter la prévention.',style,rows:2}))),
+        e('label',{style:{display:'block',marginTop:12}},'Objectif de l’atelier',e('textarea',{value:meta.objective,onChange:ev=>setMeta('objective',ev.target.value),placeholder:'Recueillir les habitudes, ouvrir le dialogue et adapter la prévention.',style,rows:2})),
+        e('label',{style:{display:'block',marginTop:12}},'Conditions de passation (facultatif)',e('textarea',{value:meta.conditions,onChange:ev=>setMeta('conditions',ev.target.value),placeholder:'À renseigner selon la séance : lecture à voix haute, aide à la compréhension, réponses individuelles… Sans nom ni information individuelle.',style,rows:2}))),
       e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:12}},'2. Importer les résultats sources'),
         e('p',null,'Importe les captures de résultats, pas l’ancien rapport. L’analyse IA transmet ces fichiers au service Anthropic : utilise uniquement des résultats anonymes autorisés, sans noms ni informations individuelles.'),
         e('input',{type:'file',multiple:true,accept:'.png,.jpg,.jpeg,.zip,.pdf',disabled:busy,'aria-label':'Captures sources',onChange:ev=>selectFiles(Array.from(ev.target.files||[])),style:{margin:'12px 0',maxWidth:'100%'}}),

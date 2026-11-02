@@ -1390,19 +1390,14 @@ Règles :
 
       // PDF → tableau de questions / Image → objet unique
       const items = Array.isArray(parsed) ? parsed : [parsed];
-      for (const item of items) {
+      if (analysisMode === "prevention") {
+        Prevention.collectQuestions(items, files[i].name, results, errors);
+      } else for (const item of items) {
         if (!item || item.erreur) {
           if (item?.erreur) errors.push({ file: files[i].name, motif: item.erreur });
           continue;
         }
         if (!item.q) { errors.push({ file: files[i].name, motif: "JSON incomplet" }); continue; }
-        if (analysisMode === "prevention") {
-          const survey = Prevention.normalizeQuestion(item, files[i].name);
-          const previous = results.find(r => r.q.toLowerCase().trim() === survey.q.toLowerCase().trim());
-          if (previous) errors.push({file:files[i].name,motif:"Question déjà extraite : vérifier les sources, aucun cumul automatique."});
-          else results.push({...survey,id:results.length+1});
-          continue;
-        }
         const correct = parseInt(item.correct) || 0;
         const total   = parseInt(item.total)   || 0;
         const taux    = total > 0 ? Math.min(100, Math.round(correct / total * 100)) : Math.min(100, parseInt(item.taux) || 0);

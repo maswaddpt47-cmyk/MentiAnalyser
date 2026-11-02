@@ -7,7 +7,7 @@ Actualiser avant de pousser sur main. Le relais vers une autre IA passe par
 l'utilisateur ; aucune notification automatique. L'utilisateur tranche.
 Verdicts : confirmé, amendé (écart concret), contredit (preuve fichier:ligne
 ou mesure). Ne pas chercher un amendement pour la forme. Le total des verdicts
-est une alerte, pas un objectif. Aucun verdict rendu à ce stade.
+est une alerte, pas un objectif. Les verdicts sont ceux des contradicteurs.
 
 ## AG-001 — Questionnaire d'usages distinct du quiz — 02/11/2026
 
@@ -101,6 +101,30 @@ compréhension des libellés), utiles pour interpréter des réponses d'élèves
 difficulté de lecture ; un champ libre dans meta suffirait. Les décimales
 (33,3 %) restent peu parlantes pour 12 élèves : « 4 élèves sur 12 » suffit.
 
+### Tranché le 02/11/2026 — amendements acceptés par l'utilisateur
+
+Après clarification, l'utilisateur autorise les corrections (« ok vas y »).
+Les effectifs exacts restent dans le rapport à la direction, avec une alerte
+sur les constats retenus à 1 ou 2 sélections/contributions. Aucun masquage
+automatique ni rapprochement individuel. Un petit effectif seul ne démontre
+pas une identification ; la prévention porte sur le contexte de transmission.
+
+Amendements réalisés : suppression de l'équivalence entre un élève et un
+pourcentage de l'effectif de classe ; base répondants explicitée ; types
+numériques validés avant conversion ; chaque question importée est contrôlée
+indépendamment, avec numéro, intitulé et source pour les questions ignorées ;
+champ facultatif « Conditions de passation » conservé en JSON et dans le PDF.
+Le prompt interdit de déduire les fréquences de la taille des mots.
+
+Validation de réalisation (ne vaut pas une nouvelle contradiction) :
+77 tests passent sous Node 20, dont 13 prévention. Le script
+`scripts/check-prevention-mutations.cjs` détecte les cinq mutations visées par
+la réponse de Claude et la perte de la suite d'un PDF (6/6). Ces contrôles
+sont dans le workflow avant déploiement. Chromium : ZIP fictif, API simulée,
+champ facultatif, alerte, chiffres exacts, PDF, JSON et persistance vérifiés ;
+aucun débordement horizontal à 390/1280 px. Aucun appel IA réel.
+
 ## Blocs tranchés
 
-Aucun. Confirmé : 0 ; amendé : 0 ; contredit : 0.
+AG-001 : amendé par Claude ; amendements acceptés par l'utilisateur et appliqués.
+Confirmé : 0 ; amendé : 1 ; contredit : 0.

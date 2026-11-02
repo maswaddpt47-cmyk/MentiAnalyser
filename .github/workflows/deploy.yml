@@ -25,6 +25,7 @@ jobs:
       - run: node --test utils.test.js
       - run: node --test logic.test.js
       - run: node --test prevention.test.js
+      - run: node scripts/check-prevention-mutations.cjs
 
   deploy:
     needs: test
