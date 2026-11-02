@@ -33,8 +33,10 @@ pourcentage/effectif fait échouer la suite. Parcours Chromium sur données
 fictives : PNG et ZIP avec PDF écarté, API simulée, relecture, rapport PDF,
 JSON et persistance ; largeurs 390/1280 sans débordement. Les mêmes versions
 des bibliothèques ont été préchargées depuis jsDelivr pour les tests locaux,
-car unpkg/cdnjs sont refusés dans cette instance. Aucun appel IA réel ni
-déploiement vérifié. Cette validation ne vaut pas contradiction indépendante.
+car unpkg/cdnjs sont refusés dans cette instance. Aucun appel IA réel. Cette validation ne vaut pas contradiction indépendante.
+Le workflow Actions #15 de `a67d23f` affiche Success (test et deploy), voir
+https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41483403999
+La lecture du HTML publié et le contrôle via API sont bloqués par le proxy.
 Publication autorisée explicitement par l’utilisateur le 02/11/2026.
 Réalisation à relire : `ca5ec4f`.
 

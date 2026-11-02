@@ -4,8 +4,9 @@
 
 ## En cours
 
-- Publication du mode prévention autorisée explicitement par l’utilisateur le
-  02/11/2026 : push et vérification du déploiement à terminer.
+- Vérification directe du HTML publié encore bloquée par le proxy (403 vers
+  maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
+  MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
 - AG-001 ouvert dans AGORA.md : contradiction indépendante à relayer à une
   IA d'un autre éditeur ; les définitions métier restent à l'utilisateur.
 
@@ -20,7 +21,11 @@
   Aucun débordement horizontal à 390 px et 1280 px.
 - Les CDN unpkg/cdnjs restent bloqués dans cette instance ; les tests
   navigateur utilisent les mêmes versions publiques préchargées depuis
-  jsDelivr. Extraction IA réelle et déploiement non validés.
+  jsDelivr. Extraction IA réelle non validée.
+- Push réalisé ; le workflow Actions #15 du commit `a67d23f` affiche Success
+  (test 10 s, deploy 57 s). Preuve :
+  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41483403999
+  Aucun changement applicatif après ce commit.
 - Les fichiers de travail de la classe sont dans /workspace/output,
   hors dépôt : ne pas les ajouter à Git. Relecture de l'animateur requise.
 
