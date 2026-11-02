@@ -44,8 +44,10 @@ test('JSON versionné : conservation des options et rejet des anciennes notes',(
 
 test('le rapport échappe toutes les données importées et garde la provenance',()=>{
   const html=P.reportHTML({version:P.VERSION,meta:{title:'<img src=x onerror=alert(1)>',actions:'<script>bad()</script>',classSize:4},questions:[q({q:'<svg onload=alert(1)>',sourceFile:'source.png',note:'<img src=x>'})]});
-  assert.doesNotMatch(html,/<img|<script|<svg/);
-  assert.match(html,/&lt;svg/);
+  assert.doesNotMatch(html,/<img|<script|<svg\s+onload=/);
+  assert.match(html,/&lt;svg onload=alert\(1\)&gt;/);
+  assert.match(html,/&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.match(html,/&lt;script&gt;bad\(\)&lt;\/script&gt;/);
   assert.match(html,/source.png/);
   assert.match(html,/ne constituent pas un diagnostic médical/);
 });

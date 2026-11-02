@@ -146,8 +146,8 @@ aucune prétention de validation indépendante par l'auteur.
 
 ### Validation de réalisation — AG-002 — 02/11/2026
 
-81 tests passent sous Node 20 (17 prévention) ; six mutations détectées sur
-six. Parcours Chromium avec API simulée : un appel vision puis un appel de
+81 tests passent sous Node 20 (17 prévention) ; sept mutations détectées sur
+sept, dont la suppression de l’échappement des contenus. Parcours Chromium avec API simulée : un appel vision puis un appel de
 rédaction distinct, prompt contextualisé avec résultats et réserves, synthèse
 et références dans le PDF, barres et radar, réutilisation sans appel inutile,
 erreur HTTP 503 explicite, régénération après changement, JSON et persistance.

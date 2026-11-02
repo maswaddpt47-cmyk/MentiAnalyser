@@ -1,6 +1,6 @@
 # CHANTIERS — MentiAnalyser
 
-État au **02/11/2026**, base publiée `63162df`, réalisation d'AG-002 vérifiée.
+État au **02/11/2026**, réalisation d’AG-002 dans `4c3b2cd`, contrôles finaux réussis.
 
 ## En cours
 
@@ -15,8 +15,8 @@
 
 - Mode prévention distinct, options éditables, inconnus conservés, sélection
   des constats, JSON versionné et rapport imprimable avec annexe et réserves.
-- 81 tests passent sous Node 20, dont 17 prévention ; six mutations détectées
-  sur six par scripts/check-prevention-mutations.cjs, désormais dans la CI.
+- 81 tests passent sous Node 20, dont 17 prévention ; sept mutations détectées
+  sur sept par scripts/check-prevention-mutations.cjs, désormais dans la CI.
 - Chromium : PNG et ZIP fictifs, ancien PDF du ZIP ignoré, API simulée,
   contrôle puis rapport/PDF, JSON, persistance et séparation des modes ;
   conditions de passation et alerte petits effectifs sans masquage vérifiées.

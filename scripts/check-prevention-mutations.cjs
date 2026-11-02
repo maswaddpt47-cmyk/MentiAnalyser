@@ -11,6 +11,7 @@ const mutations = [
   ['contrôle du total des pourcentages désactivé', 'prevention.js', "q.responseType === 'single' && percentagesKnown", 'false && percentagesKnown'],
   ['contributions libres comptées comme personnes', 'prevention.js', "q.responseType !== 'free' && q.respondents !== null", 'q.respondents !== null'],
   ['fin du PDF perdue après une question invalide', 'MentiAnalyser.html', 'Prevention.collectQuestions(items, files[i].name, results, errors);', 'for (const item of items) { const survey = Prevention.normalizeQuestion(item, files[i].name); results.push({...survey, id:results.length+1}); }'],
+  ['contenus importés non échappés', 'prevention.js', 'const esc = s =>', "const esc = s => String(s ?? ''); const unusedEscape = s =>"],
 ];
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'menti-mutations-'));
 try {
