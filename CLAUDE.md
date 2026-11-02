@@ -1,5 +1,14 @@
 # CLAUDE.md — Règles de travail pour ce projet
 
+Reprise : lire `CHANTIERS.md`. Décisions à trancher : consulter `AGORA.md`.
+AGORA : ouvrir un bloc avant tout changement de calcul, filtre, chiffre affiché,
+format de stockage, coût irréversible, contradiction d'une note, troisième
+itération sans résolution, abandon d'un existant inexpliqué ou choix non arbitré.
+Soumettre d'office sans bloquer ; le relais est humain et la décision revient
+à l'utilisateur. Rendu pur et correctif réversible sans calcul : pas de bloc.
+Sécurité et chiffres : contradicteur indépendant ; l'IA qui écrit ne se relit
+pas. Règles complètes : `MD-LIB/agora.md` (non requis pour répondre au bloc).
+
 ---
 
 ## 1. Git pull obligatoire avant toute intervention
