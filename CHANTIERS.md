@@ -14,9 +14,14 @@
   demande. La récupération temporaire et sa permission actions:read ont été
   retirées ; ne pas multiplier des relances identiques. Dernière preuve :
   https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41511879461
-  Prochaine action externe : faire annuler/débloquer la demande Pages
-  `ec61cdb16494c902389fcee989046e26e4e6a09f` dans GitHub, puis relancer
-  Deploy to GitHub Pages. Signalement préparé hors dépôt dans
+  Voie suivante : accès direct via l'API GitHub après autorisation réseau.
+  Le brouillon cloud ajoute api.github.com et maswaddpt47-cmyk.github.io,
+  en conservant les domaines existants. Sauvegarde confirmée mais publication
+  requise dans les paramètres de l'environnement ; ce n'est pas encore appliqué.
+  Après activation, tester l'accès et les droits Pages via la route normale,
+  sans contourner le proxy ni utiliser Actions comme relais de l'API bloquée.
+  Ne pas présumer que l'accès Git autorise l'API Pages. Si la voie directe ne
+  permet pas le déblocage, signalement prêt hors dépôt :
   /workspace/output/Signalement_blocage_GitHub_Pages.txt.
 
 ## État vérifié
