@@ -9,8 +9,11 @@
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
 - Déploiement de `ec61cdb` : tests GitHub réussis (13 s), publication Pages
   échouée après 10 min 16 s : « Timeout reached, aborting! ». Cause du délai
-  non déterminée ; aucun défaut de code signalé. Nouvelle tentative déclenchée
-  par le commit documentaire de communication ; vérifier son résultat.
+  non déterminée ; aucun défaut de code signalé. La tentative `2ec6036` est
+  ensuite refusée (HTTP 400) car l'ancien déploiement reste actif côté Pages.
+  Récupération ciblée par scripts/cancel-expired-pages.cjs via le jeton
+  éphémère du workflow (permissions pages:write existantes). Vérifier le
+  résultat, puis retirer l'étape temporaire après libération du déploiement.
   Tentative précédente :
   https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41508087944
 
@@ -18,7 +21,7 @@
 
 - Mode prévention distinct, options éditables, inconnus conservés, sélection
   des constats, JSON versionné et rapport imprimable avec annexe et réserves.
-- 90 tests passent sous Node 20, dont 26 prévention ; 22 mutations ciblées
+- 93 tests passent sous Node 20 (90 application, 3 récupération Pages) ; 22 mutations ciblées
   détectées sur 22 dans la CI. Cela ne mesure pas une couverture exhaustive.
 - Chromium : PNG et ZIP fictifs, ancien PDF du ZIP ignoré, API simulée,
   contrôle puis rapport/PDF, JSON, persistance et séparation des modes ;
