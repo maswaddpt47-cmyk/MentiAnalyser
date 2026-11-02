@@ -1,28 +1,14 @@
 # CHANTIERS — MentiAnalyser
 
-État au **02/11/2026**, amendements d’AG-002 publiés dans `ec61cdb`.
+État au **02/11/2026** (base `5049ed6`), amendements d’AG-002 déployés par le run 24.
 
 ## En cours
 
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
-- Publication Pages bloquée côté GitHub : le workflow de `ec61cdb` expire
-  après dix minutes, puis les créations suivantes sont refusées HTTP 400 :
-  « due to in progress deployment. Please cancel ec61cdb… first ».
-  Les workflows de récupération `6aa5a80` et `a0b3f55` n'ont pas libéré cette
-  demande. La récupération temporaire et sa permission actions:read ont été
-  retirées ; ne pas multiplier des relances identiques. Dernière preuve :
-  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41511879461
-  Voie suivante : accès direct via l'API GitHub après autorisation réseau.
-  Le brouillon cloud ajoute api.github.com et maswaddpt47-cmyk.github.io,
-  en conservant les domaines existants. Sauvegarde confirmée mais publication
-  requise dans les paramètres de l'environnement ; ce n'est pas encore appliqué.
-  Après activation, tester l'accès et les droits Pages via la route normale,
-  sans contourner le proxy ni utiliser Actions comme relais de l'API bloquée.
-  Ne pas présumer que l'accès Git autorise l'API Pages. Si la voie directe ne
-  permet pas le déblocage, signalement prêt hors dépôt :
-  /workspace/output/Signalement_blocage_GitHub_Pages.txt.
+- Version servie à confirmer par l'utilisateur (le proxy de la session
+  refuse github.io) : Ctrl+Shift+R, puis vérifier un amendement d'AG-002.
 
 ## État vérifié
 
@@ -45,8 +31,15 @@
 - Rapport Claude et visualisations publiés : workflow du commit `d9feb3f`
   terminé avec WORKFLOW_RUN_CONCLUSION_SUCCESS (test et déploiement) :
   https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41499087705
-  Cette preuve concerne la version précédente. Les amendements sont poussés
-  dans `ec61cdb` ; leur étape Pages est encore en cours (voir En cours).
+  Cette preuve concerne la version précédente.
+- Amendements d'AG-002 (code de `ec61cdb`, identique à `5049ed6`) déployés
+  le 02/11/2026 à 21:07 (Paris) : run 24 relancé sur main, tests, mutations
+  et « Reported success! » (Created deployment 5049ed6) :
+  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41516160159
+  Blocage précédent levé côté GitHub sans action de notre part : l'API
+  répondait déjà deployment_cancelled pour ec61cdb tout en refusant les
+  créations (runs 21-23) ; la relance 27 min plus tard est passée. Si cela
+  se reproduit : attendre puis relancer une fois, sans étape de récupération.
 - Les fichiers de travail de la classe sont dans /workspace/output,
   hors dépôt : ne pas les ajouter à Git. Relecture de l'animateur requise.
 
