@@ -124,6 +124,38 @@ sont dans le workflow avant déploiement. Chromium : ZIP fictif, API simulée,
 champ facultatif, alerte, chiffres exacts, PDF, JSON et persistance vérifiés ;
 aucun débordement horizontal à 390/1280 px. Aucun appel IA réel.
 
+## AG-002 — Synthèse Claude et visualisations de prévention — 02/11/2026
+
+**Auteur** : Codex — base `63162df`.
+**Demande** : l'utilisateur souhaite la rédaction par Claude et retrouver les
+graphes et le radar. Le modèle descriptif seul ne répondait pas à cet objectif.
+**Critères** : 1 (synthèse persistée), 7 (visualisation des proportions).
+**Proposition** : l'application calcule les valeurs et envoie les résultats
+vérifiés à Claude pour une synthèse personnalisée avec références aux réponses.
+Les barres représentent les options de chaque question. Le radar représente
+les proportions d'options d'une seule question choisie, sans moyenne thématique,
+note, objectif à 100 % ou jugement de compétence. Une valeur inconnue n'est
+jamais un zéro ; les données incohérentes ne servent pas au radar.
+**Ce que cela engage** : synthèse sauvegardée avec son état source ; toute
+modification rend sa réutilisation impossible jusqu'à régénération.
+**Non vérifié par l'auteur** : fidélité d'une réponse réelle du modèle,
+à relire par l'animateur ; pertinence pédagogique à contredire indépendamment.
+**Si personne ne répond** : livrer la demande testée et donner le relais ;
+aucune prétention de validation indépendante par l'auteur.
+**Où regarder** : prevention.js, prevention-ui.js, prevention.test.js.
+
+### Validation de réalisation — AG-002 — 02/11/2026
+
+81 tests passent sous Node 20 (17 prévention) ; six mutations détectées sur
+six. Parcours Chromium avec API simulée : un appel vision puis un appel de
+rédaction distinct, prompt contextualisé avec résultats et réserves, synthèse
+et références dans le PDF, barres et radar, réutilisation sans appel inutile,
+erreur HTTP 503 explicite, régénération après changement, JSON et persistance.
+Pas de débordement horizontal à 390/1280 px. Barres vectorielles vérifiées
+visuellement dans le PDF sans impression des arrière-plans. Aucun appel API
+réel : contenu produit par le modèle en situation réelle restant à relire.
+Cette validation ne vaut pas une contradiction indépendante.
+
 ## Blocs tranchés
 
 AG-001 : amendé par Claude ; amendements acceptés par l'utilisateur et appliqués.

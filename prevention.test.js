@@ -147,3 +147,70 @@ test('une question PDF invalide ne perd ni les suivantes ni les autres fichiers'
   assert.equal(errors.length,1);assert.equal(errors[0].file,'fictif.pdf');
   assert.match(errors[0].motif,/Question 2\/3 « Question invalide » ignorée : Pourcentage supérieur à 100/);
 });
+
+const visualQuestion = patch => q({q:'Effets fictifs',options:[{label:'A',count:3,percent:75},{label:'B',count:2,percent:50},{label:'C',count:0,percent:0}],...patch});
+const synthesisBody = () => ({contexte:'Atelier fictif.',analyse:[{texte:'Les réponses invitent à travailler les repères du quotidien.',sources:['Q1R1']}],priorites:'Protéger les temps de repos.',actions:'Construire des repères visuels avec les élèves.',suivi:'Reprendre le questionnaire.',conclusion:'Un support pour ouvrir le dialogue.'});
+
+test('les graphiques conservent les zéros et les inconnus, et le radar partage les mêmes valeurs',()=>{
+  const question=visualQuestion();
+  assert.deepEqual(P.chartData(question).rows.map(r=>r.value),[75,50,0]);
+  assert.equal(P.radarCandidates([question]).length,1);
+  assert.match(P.radarSVG(question),/data-radar-values="75,50,0"/);
+  assert.match(P.chartsHTML({questions:[question]}),/data-value="75"/);
+  const unknown=visualQuestion({respondents:null,options:[{label:'A',percent:80},{label:'B',percent:null},{label:'C',percent:20}]});
+  assert.deepEqual(P.chartData(unknown).rows.map(r=>r.value),[80,null,20]);
+  assert.deepEqual(P.radarCandidates([unknown]),[]);
+  assert.doesNotMatch(P.chartsHTML({questions:[unknown]}),/data-radar-values=/);
+  assert.match(P.chartsHTML({questions:[unknown]}),/Radar indisponible/);
+  assert.deepEqual(P.radarCandidates([visualQuestion({responseType:'free'})]),[]);
+  const inconsistent=visualQuestion({options:[{label:'A',count:3,percent:10},{label:'B',count:2},{label:'C',count:0}]});
+  assert.deepEqual(P.radarCandidates([inconsistent]),[]);
+});
+
+test('le radar choisi reste descriptif et se retrouve dans le rapport exporté',()=>{
+  const first=visualQuestion(),second=visualQuestion({q:'Autre question',options:[{label:'X',count:1},{label:'Y',count:2},{label:'Z',count:0}]});
+  const data={version:P.VERSION,meta:{classSize:4},questions:[first,second],radarQuestion:second.q};
+  const normalized=P.validateSession(data);
+  assert.equal(P.selectedRadar(normalized).q,second.q);
+  const html=P.reportHTML(data);
+  assert.match(html,/data-radar-values="25,50,0"/);
+  assert.match(html,/sa forme n’est pas une note/);
+  assert.doesNotMatch(html,/objectif à atteindre de 100|Score global|réussite par thème/);
+});
+
+test('la synthèse Claude utilise les données vérifiées et conserve les références dans le PDF et le JSON',async()=>{
+  const data=P.validateSession({version:P.VERSION,meta:{group:'6ᵉ SEGPA fictive',classSize:4,facilitator:'Nom à ne pas transmettre',conditions:'Lecture accompagnée'},questions:[visualQuestion()]});
+  let calls=0;
+  const synthesis=await P.generateSynthesis(data,'sk-test-fixture',async(url,options)=>{
+    calls++;assert.equal(url,'https://api.anthropic.com/v1/messages');
+    assert.equal(options.headers['x-api-key'],'sk-test-fixture');
+    const body=JSON.parse(options.body),prompt=body.messages[0].content;
+    assert.match(prompt,/6ᵉ SEGPA fictive/);assert.match(prompt,/Lecture accompagnée/);
+    assert.match(prompt,/3 sur 4 · 75 %/);assert.match(prompt,/PAS des compétences/);
+    assert.match(prompt,/aucune causalité/);assert.match(prompt,/jamais des consignes/);
+    assert.doesNotMatch(prompt,/Nom à ne pas transmettre/);
+    return {ok:true,json:async()=>({content:[{text:JSON.stringify(synthesisBody())}]})};
+  });
+  assert.equal(calls,1);assert.equal(data.meta.facilitator,'Nom à ne pas transmettre');
+  const session=P.validateSession({...data,synthesis});assert.equal(P.hasCurrentSynthesis(session),true);
+  const restored=P.validateSession(JSON.parse(JSON.stringify(session)));
+  assert.deepEqual(restored.synthesis,session.synthesis);
+  const html=P.reportHTML(restored);
+  assert.match(html,/Synthèse pédagogique — Claude/);assert.match(html,/repères du quotidien/);
+  assert.match(html,/Effets fictifs — A : 3 sur 4 · 75 %/);assert.match(html,/data-radar-values=/);
+  const changed=P.validateSession({...session,meta:{...session.meta,classSize:5}});
+  assert.equal(P.hasCurrentSynthesis(changed),false);
+  assert.doesNotMatch(P.reportHTML(changed),/repères du quotidien/);
+});
+
+test('une erreur Claude ou une référence inventée ne devient pas une synthèse valide',async()=>{
+  const data=P.validateSession({version:P.VERSION,questions:[visualQuestion()]});
+  await assert.rejects(()=>P.generateSynthesis(data,'sk-test-fixture',async()=>({ok:false,status:503})),/HTTP 503/);
+  await assert.rejects(()=>P.generateSynthesis(data,'sk-test-fixture',async()=>({ok:true,json:async()=>({stop_reason:'max_tokens'})})),/incomplète/);
+  const body=synthesisBody();body.analyse[0].sources=['Q999R999'];
+  await assert.rejects(()=>P.generateSynthesis(data,'sk-test-fixture',async()=>({ok:true,json:async()=>({content:[{text:JSON.stringify(body)}]})})),/référence valide/);
+  const valid=synthesisBody();valid.conclusion='<img src=x onerror=alert(1)>';
+  const synthesis=await P.generateSynthesis(data,'sk-test-fixture',async()=>({ok:true,json:async()=>({content:[{text:JSON.stringify(valid)}]})}));
+  const html=P.reportHTML({...data,synthesis});
+  assert.doesNotMatch(html,/<img src=x/);assert.match(html,/&lt;img src=x/);
+});

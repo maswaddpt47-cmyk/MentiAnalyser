@@ -17,7 +17,9 @@
     const [errors,setErrors] = React.useState([]);
     const [message,setMessage] = React.useState('');
     const [ack,setAck] = React.useState(false);
-    const busy = status === 'loading';
+    const [generating,setGenerating] = React.useState(false);
+    const busy = status === 'loading' || generating;
+    const latest=React.useRef(data);latest.current=data;
     React.useEffect(()=>{
       try { localStorage.setItem('menti_prevention_v1',JSON.stringify(data)); }
       catch { setMessage('Sauvegarde locale impossible : exporte le JSON pour conserver ton travail.'); }
@@ -28,7 +30,7 @@
     const card = {padding:18,background:'#fff',border:'1px solid #d9e3e9',borderRadius:12,marginBottom:16,minWidth:0};
     const field = (label, value, fn, type='text', extra={}) => e('label',{style:{display:'block',minWidth:0}},
       e('span',{style:{display:'block',fontSize:12,fontWeight:600,marginBottom:4}},label),
-      e('input',{...extra,type,value:value??'',onChange:ev=>fn(ev.target.value),style}));
+      e('input',{disabled:busy,...extra,type,value:value??'',onChange:ev=>fn(ev.target.value),style}));
     const setMeta = (key,value) => setData(d=>({...d,meta:{...d.meta,[key]:value}}));
     const update = (index,patch) => {setAck(false);setDraft(visible.map((q,i)=>i===index?{...q,...patch}:q));};
     const warningRows = visible.flatMap(q=>{
@@ -39,17 +41,37 @@
       const url=URL.createObjectURL(new Blob([content],{type}));
       const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
-    function exportReport() {
+    async function getKey() {
+      if(apiKey)return apiKey;
+      const key=await unlock(password);
+      if(!key)throw new Error('Mot de passe IA incorrect ou manquant.');
+      setKey(key);setPassword('');return key;
+    }
+    async function exportReport(withClaude=true, force=false) {
       if(draft!==null){setMessage('Vérifie puis applique les réponses avant de générer le rapport.');return;}
       if(!data.questions.length){setMessage('Ajoute ou importe les résultats du questionnaire.');return;}
       if(!meta.group.trim() || !Number(meta.classSize)){setMessage('Renseigne la classe et son effectif avant de générer le rapport.');return;}
       if(!ack){setMessage('Relis les réponses et les points à clarifier, puis coche la confirmation.');return;}
+      let win;
       try {
-        const html=P.reportHTML(data), win=window.open('','_blank');
-        if(!win) {download(html,'Rapport_prevention.html','text/html;charset=utf-8');setMessage('Rapport HTML téléchargé : ouvre-le puis choisis Imprimer / Enregistrer en PDF.');return;}
-        win.opener=null;win.document.open();win.document.write(html);win.document.close();
-        setMessage('Rapport ouvert. Utilise Imprimer / Enregistrer en PDF après relecture.');
-      } catch(err){setMessage(err.message);}
+        let snapshot=P.validateSession(data);
+        win=window.open('','_blank');
+        if(win){win.opener=null;win.document.write('<p>Préparation du rapport…</p>');}
+        if(withClaude && (force || !P.hasCurrentSynthesis(snapshot))) {
+          setGenerating(true);setMessage('Claude rédige la synthèse pédagogique à partir des réponses vérifiées…');
+          const key=await getKey();
+          const synthesis=await P.generateSynthesis(snapshot,key);
+          if(P.synthesisSource(P.validateSession(latest.current))!==synthesis.source)
+            throw new Error('Les données ont changé pendant la rédaction. Relance le rapport sur les données actuelles.');
+          snapshot={...snapshot,synthesis};setData(snapshot);
+        }
+        if(!withClaude)snapshot={...snapshot,synthesis:null};
+        const html=P.reportHTML(snapshot);
+        if(!win){download(html,'Rapport_prevention.html','text/html;charset=utf-8');setMessage('Rapport HTML téléchargé : ouvre-le puis choisis Imprimer / Enregistrer en PDF.');return;}
+        win.document.open();win.document.write(html);win.document.close();
+        setMessage(withClaude?'Rapport avec synthèse Claude et graphiques ouvert. Relis-le avant transmission, puis enregistre-le en PDF.':'Rapport descriptif avec graphiques ouvert.');
+      } catch(err){if(win)win.close();setMessage(err.message);}
+      finally {setGenerating(false);}
     }
     async function selectFiles(list) {
       try {
@@ -68,19 +90,19 @@
       } catch(err){setMessage('Impossible de lire les fichiers : '+err.message);}
     }
     async function runAnalysis() {
-      let key=apiKey;
-      if(!key) {
-        key=await unlock(password);
-        if(!key){setMessage('Mot de passe IA incorrect. Tu peux aussi saisir les réponses manuellement.');return;}
-        setKey(key);setPassword('');
-      }
-      setMessage('');setAck(false);
-      await analyse(files,key,setStatus,setProgress,setRetry,results=>setDraft(results),setErrors,()=>{},'', 'prevention');
+      try {
+        const key=await getKey();setMessage('');setAck(false);
+        await analyse(files,key,setStatus,setProgress,setRetry,results=>setDraft(results),setErrors,()=>{},'', 'prevention');
+      } catch(err){setMessage(err.message);}
     }
+    let normalized;
+    try {normalized=P.validateSession(data);}catch {normalized=null;}
     const noDraft = draft === null;
     return e('main',{style:{maxWidth:1050,margin:'0 auto',padding:'20px 16px',overflowWrap:'anywhere'}},
       e('h1',{style:{fontSize:24,color:'#197d89',marginBottom:8}},'Usages des écrans et prévention'),
       e('p',{style:{marginBottom:16}},'Un bilan des pratiques déclarées et des besoins d’accompagnement, destiné à l’équipe éducative. Les résultats sont conservés dans ce navigateur ; exporte le JSON pour les transférer.'),
+      e('style',null,'.prevention-charts .chart-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);align-items:center;gap:10px;margin:10px 0}.prevention-charts .bar-track{background:#edf2f5;border-radius:5px;min-height:14px}.prevention-charts .bar-fill{height:14px;background:#4389bd;border-radius:5px}.prevention-charts article{margin:18px 0}.prevention-charts ol{padding-left:24px}.prevention-charts .source{font-size:12px;color:#475569}.prevention-charts h2{font-size:18px}.prevention-charts h3{font-size:15px}'),
+      data.synthesis && normalized && !P.hasCurrentSynthesis(normalized) && e('p',{role:'status',style:card},'Les données ont changé : la synthèse Claude doit être régénérée.'),
       message && e('p',{role:'status',style:{...card,background:'#fff7df'}},message),
       e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:12}},'1. Contexte du rapport'),
         e('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,240px),1fr))',gap:12}},
@@ -94,7 +116,7 @@
         e('p',null,'Importe les captures de résultats, pas l’ancien rapport. L’analyse IA transmet ces fichiers au service Anthropic : utilise uniquement des résultats anonymes autorisés, sans noms ni informations individuelles.'),
         e('input',{type:'file',multiple:true,accept:'.png,.jpg,.jpeg,.zip,.pdf',disabled:busy,'aria-label':'Captures sources',onChange:ev=>selectFiles(Array.from(ev.target.files||[])),style:{margin:'12px 0',maxWidth:'100%'}}),
         e('p',null,`${files.length} fichier(s) source(s) sélectionné(s).`),
-        field('Mot de passe IA (pour analyser les captures)',password,setPassword,'password',{autoComplete:'off',disabled:busy}),
+        field('Mot de passe IA (analyse et rapport Claude)',password,setPassword,'password',{autoComplete:'off',disabled:busy}),
         e('div',{style:{display:'flex',gap:10,flexWrap:'wrap',marginTop:12}},
           e('button',{style:btn,disabled:busy||!files.length,onClick:runAnalysis},busy?`Analyse ${progress}/${files.length}…`:'Analyser les captures'),
           e('button',{style:btn,disabled:busy,onClick:()=>{setAck(false);setDraft([...visible,{kind:'survey',id:Date.now(),q:'Nouvelle question',theme:'Usages des écrans',responseType:'unknown',respondents:null,options:[{label:'Réponse à compléter',count:null,percent:null}],sourceFile:'Saisie manuelle',note:''}]);}},'Ajouter une question manuellement')),
@@ -123,12 +145,19 @@
           try{const questions=visible.map(q=>P.normalizeQuestion(q));setData(d=>({...d,questions}));setDraft(null);setAck(false);setMessage('Réponses appliquées. Relis les points à clarifier avant le rapport.');}
           catch(err){setMessage(err.message);}
         }},'Appliquer les réponses vérifiées')),
-      e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:12}},'4. Préparer le rapport à la direction'),
+      normalized && data.questions.length>0 && e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:10}},'4. Graphiques et radar'),
+        e('p',null,'Les barres décrivent les réponses. Le radar présente les proportions d’une même question ; il ne représente pas une note de compétence.'),
+        e('label',null,'Question du radar',e('select',{value:P.selectedRadar(normalized)?.q||'',disabled:busy,style,onChange:ev=>setData(d=>({...d,radarQuestion:ev.target.value}))},
+          ...P.radarCandidates(normalized.questions).map((q,i)=>e('option',{key:i,value:q.q},q.q)))),
+        e('div',{className:'prevention-charts',dangerouslySetInnerHTML:{__html:P.chartsHTML(normalized)}})),
+      e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:12}},'5. Préparer le rapport à la direction'),
         e('label',null,'Actions proposées (à adapter par l’équipe)',e('textarea',{value:meta.actions,rows:4,style,onChange:ev=>setMeta('actions',ev.target.value),placeholder:'Repères sur les usages du soir, sommeil, pauses et activités sans écran ; échange avec les familles. Supports visuels et situations concrètes.'})),
         e('label',null,'Suivi proposé',e('textarea',{value:meta.followup,rows:3,style,onChange:ev=>setMeta('followup',ev.target.value),placeholder:'Reprendre les mêmes questions après les séances et préciser les répondants à chaque passage.'})),
         e('label',{style:{display:'block',margin:'12px 0'}},e('input',{type:'checkbox',checked:ack,onChange:ev=>setAck(ev.target.checked)}),' J’ai vérifié les réponses, les répondants et les points à clarifier. Le rapport sera relu avant transmission.'),
         e('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
-          e('button',{style:{...btn,background:'#197d89',color:'#fff'},disabled:busy,onClick:exportReport},'Rapport pour la direction / PDF'),
+          e('button',{style:{...btn,background:'#197d89',color:'#fff'},disabled:busy,onClick:()=>exportReport(true)},generating?'Rédaction par Claude…':'Rapport avec Claude / PDF'),
+          e('button',{style:btn,disabled:busy,onClick:()=>exportReport(false)},'Rapport descriptif / PDF'),
+          normalized && P.hasCurrentSynthesis(normalized) && e('button',{style:btn,disabled:busy,onClick:()=>exportReport(true,true)},'Régénérer la synthèse Claude'),
           e('button',{style:btn,disabled:busy||!noDraft,onClick:()=>download(JSON.stringify(P.validateSession(data),null,2),'Questionnaire_prevention.json','application/json')},'Sauvegarder le JSON'),
           e('label',{style:btn},'Ouvrir un JSON prévention',e('input',{type:'file',accept:'.json',disabled:busy,'aria-label':'Ouvrir un JSON prévention',style:{display:'block',maxWidth:220},onChange:async ev=>{
             try{const file=ev.target.files[0];if(!file)return;const restored=P.validateSession(JSON.parse(await file.text()));
@@ -136,7 +165,7 @@
               setData(restored);setDraft(null);setAck(false);setFiles([]);setErrors([]);setMessage('Questionnaire restauré ; vérifie-le avant diffusion.');
             }catch(err){setMessage(err.message);}finally{ev.target.value='';}
           }}))),
-        e('p',{style:{fontSize:12,marginTop:12}},'Le rapport utilise les réponses vérifiées et les pistes saisies, sans génération IA supplémentaire. Les anciennes notes de quiz ne peuvent pas être converties : réimporte les captures sources.'))
+        e('p',{style:{fontSize:12,marginTop:12}},'Le rapport avec Claude transmet les réponses agrégées vérifiées et le contexte de l’atelier à Anthropic pour une rédaction personnalisée. Une synthèse déjà générée est réutilisée tant que les données ne changent pas. Relis les constats et recommandations avant transmission. Les anciennes notes de quiz nécessitent les captures sources.'))
     );
   };
 })();
