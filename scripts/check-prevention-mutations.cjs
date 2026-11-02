@@ -12,6 +12,21 @@ const mutations = [
   ['contributions libres comptées comme personnes', 'prevention.js', "q.responseType !== 'free' && q.respondents !== null", 'q.respondents !== null'],
   ['fin du PDF perdue après une question invalide', 'MentiAnalyser.html', 'Prevention.collectQuestions(items, files[i].name, results, errors);', 'for (const item of items) { const survey = Prevention.normalizeQuestion(item, files[i].name); results.push({...survey, id:results.length+1}); }'],
   ['contenus importés non échappés', 'prevention.js', 'const esc = s =>', "const esc = s => String(s ?? ''); const unusedEscape = s =>"],
+  ['géométrie du radar indépendante des valeurs', 'prevention.js', 'coords(i,radius*r.value/100)', 'coords(i,radius)'],
+  ['numéros des axes décalés', 'prevention.js', '${i+1}</text>', '${i}</text>'],
+  ['largeur des barres indépendante des valeurs', 'prevention.js', 'r.value/c.max*200', '200'],
+  ['radar sans base de répondants', 'prevention.js', 'q.respondents > 0 && q.options.every(o=>o.count !== null)', 'q.options.every(o=>o.count !== null)'],
+  ['radar sans effectifs vérifiés', 'prevention.js', '&& q.options.every(o=>o.count !== null)', ''],
+  ['sous-total incohérent admis au radar', 'prevention.js', 'somme des effectifs|ne totalisent', 'ne totalisent'],
+  ['nombres inventés dans la synthèse', 'prevention.js', 'if(numericTokens(value).some', 'if(false && numericTokens(value).some'],
+  ['assertions de diagnostic admises', 'prevention.js', 'if(!negative && /', 'if(false && /'],
+  ['textes de l’animateur retirés', 'prevention.js', 'm.actions || m.followup ?', 'false ?'],
+  ['priorités de l’animateur inversées dans le prompt', 'prevention.js', 'retenu=true sont les priorités choisies', 'retenu=false sont les priorités choisies'],
+  ['plafond des paragraphes retiré', 'prevention.js', 'b.analyse.length>8', 'false'],
+  ['plafond des références retiré', 'prevention.js', 'a.sources.length>3', 'false'],
+  ['clôtures JSON non traitées', 'prevention.js', ".replace(/^```json\\s*|\\s*```$/g,'')", ''],
+  ['interdiction des notes retirée du prompt', 'prevention.js', 'Interdiction de créer une note', 'Propose une note'],
+  ['réserves non transmises', 'prevention.js', 'reserves:data.questions.flatMap', 'reserves:[].flatMap'],
 ];
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'menti-mutations-'));
 try {

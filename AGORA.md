@@ -237,7 +237,43 @@ pertinence SEGPA du texte ; rendu Chromium/PDF ; site publié (proxy).
 MentiAnalyser.html lu aux seuls points d'intégration (:303, :1311, :1348,
 :1393, :2925-2937).
 
+### Suite de réalisation — AG-002 — 02/11/2026
+
+L'utilisateur demande de traiter les écarts (« Alors »), sans nouvelle demande
+d'autorisation générale. Les contre-exemples principaux ont été reproduits
+avant correction : nombres inventés acceptés, actions/suivi absents du rapport
+IA, radar sans base et choix ambigu entre questions au même titre.
+
+Amendements appliqués :
+- Contrôle des nombres écrits en chiffres dans chaque section ; pour les
+  paragraphes d'analyse, comparaison aux observations citées. Rejet des
+  assertions de diagnostic/causalité/compétence des contre-exemples. Cela ne
+  constitue pas une validation sémantique générale : bandeau corrigé et
+  relecture humaine explicitement maintenue. Anciennes synthèses invalidées.
+- Prompt donnant la priorité aux observations retenues ; actions et suivi de
+  l'animateur imprimés séparément à l'identique, avec ou sans synthèse Claude.
+- Réserves avant la prose, date de génération en heure de Paris, numérotation
+  continue ; information complète sur le contexte et les textes libres
+  transmis à Anthropic, sans nom ni information individuelle.
+- Échelle des barres en effectifs explicitée. Radar réservé aux répondants et
+  effectifs connus ; identifiants distincts, choix automatique signalé et
+  ordre des axes expliqué, sans interprétation de la surface.
+
+Validation : 90 tests passent sous Node 20, dont 26 prévention ; 22 mutations
+ciblées détectées sur 22. Coordonnées réelles du polygone, numéros d'axes,
+largeurs des barres, bornes, réserves, prompt, clôtures JSON et plafonds de la
+réponse couverts. Chromium : API simulée, rapport PDF, textes conservés,
+réserves avant analyse, date, JSON, cache, deux questions au même titre,
+sélection indépendante, largeurs 390/1280 vérifiés. Aucun appel au modèle réel
+ni prétention de couverture exhaustive par les mutations.
+
+### Tranché le 02/11/2026 — décision : amendements appliqués
+
+Les limites de validation de la prose et la relecture par l'animateur restent
+des invariants du rapport. Le compte rendu de Claude est conservé intégralement.
+
 ## Blocs tranchés
 
 AG-001 : amendé par Claude ; amendements acceptés par l'utilisateur et appliqués.
-Confirmé : 0 ; amendé : 1 ; contredit : 0.
+AG-002 : amendé par Claude ; corrections demandées par l'utilisateur et appliquées.
+Confirmé : 0 ; amendé : 2 ; contredit : 0.

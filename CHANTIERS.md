@@ -1,42 +1,28 @@
 # CHANTIERS — MentiAnalyser
 
-État au **02/11/2026**, base relue `0c6302c`, application publiée `d9feb3f`.
+État au **02/11/2026**, base relue `6cc87b2`, amendements d'AG-002 vérifiés.
 
 ## En cours
 
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
-- AG-002 : réponse indépendante de Claude reçue dans `0c6302c`, verdict
-  **amendé**. Réponse conservée intégralement dans AGORA.md. Le pull n'a
-  modifié aucun code ; constats du contradicteur à reproduire avant correctif.
-- Rapport Claude : clarifier le statut non vérifié de la prose, respecter les
-  constats retenus, conserver les actions et le suivi saisis par l'animateur ;
-  expliciter les textes libres et le contexte transmis à Anthropic. Mettre
-  les réserves avant l'analyse et afficher la date de génération.
-- Graphiques/radar : expliciter l'échelle des barres sans base de répondants,
-  vérifier l'éligibilité des pourcentages sans base connue, rendre le choix
-  et l'ordre des axes explicites, distinguer les questions au titre identique.
-- Compléter les tests ciblés de géométrie et de bornes des graphiques, de
-  transmission des réserves et des limites de la réponse Claude selon AG-002.
-  Ces réserves techniques ne sont pas en attente d'une nouvelle autorisation
-  générale ; les changements de sens ou de portée restent à expliquer.
+- Publier les amendements d'AG-002 et vérifier leur workflow de déploiement.
 
 ## État vérifié
 
 - Mode prévention distinct, options éditables, inconnus conservés, sélection
   des constats, JSON versionné et rapport imprimable avec annexe et réserves.
-- 81 tests passaient sous Node 20 sur `d9feb3f`, dont 17 prévention ; sept
-  mutations détectées sur sept (six d'AG-001 + échappement), dans la CI. Cela
-  ne mesure pas toute la couverture d'AG-002 : Claude rapporte des mutations
-  supplémentaires survivantes, détaillées dans sa réponse ; non rejouées
-  lors de ce pull documentaire.
+- 90 tests passent sous Node 20, dont 26 prévention ; 22 mutations ciblées
+  détectées sur 22 dans la CI. Cela ne mesure pas une couverture exhaustive.
 - Chromium : PNG et ZIP fictifs, ancien PDF du ZIP ignoré, API simulée,
   contrôle puis rapport/PDF, JSON, persistance et séparation des modes ;
   conditions de passation et alerte petits effectifs sans masquage vérifiées.
   Deux appels distincts testés (vision puis rédaction Claude), prompt
   contextualisé, références aux réponses, cache invalidé après modification,
   erreur API explicite, graphiques et radar repris dans le PDF et le JSON.
+  Amendements : propres textes conservés, réserves avant prose, date de
+  génération, choix indépendant de deux questions au titre identique.
   Aucun débordement horizontal à 390 px et 1280 px.
 - Les CDN unpkg/cdnjs restent bloqués dans cette instance ; les tests
   navigateur utilisent les mêmes versions publiques préchargées depuis
@@ -44,7 +30,8 @@
 - Rapport Claude et visualisations publiés : workflow du commit `d9feb3f`
   terminé avec WORKFLOW_RUN_CONCLUSION_SUCCESS (test et déploiement) :
   https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41499087705
-  Aucun changement applicatif après ce commit.
+  Ces preuves concernent la version précédente ; le nouveau workflow reste
+  à vérifier après publication des amendements.
 - Les fichiers de travail de la classe sont dans /workspace/output,
   hors dépôt : ne pas les ajouter à Git. Relecture de l'animateur requise.
 
@@ -67,4 +54,9 @@
 - Barres par option ; radar d'une seule question choisie, proportions connues
   et cohérentes, sans moyenne de thèmes ni objectif de réussite. Conserver les
   zéros réels ; les inconnus ne sont ni des zéros ni des axes de radar.
+- AG-002 tranché et amendements appliqués : les nombres et références
+  contrôlés ne prouvent pas le sens de la prose ; ne pas présenter le texte
+  de Claude comme vérifié. Les propres actions/suivi restent imprimés.
+- Radar : répondants et effectifs vérifiés, questions identifiées par ID,
+  choix automatique signalé, surface sans signification d'indicateur.
 - Données fictives pour les tests ; aucune donnée réelle d'élève dans Git.

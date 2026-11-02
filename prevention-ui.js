@@ -146,11 +146,12 @@
           catch(err){setMessage(err.message);}
         }},'Appliquer les réponses vérifiées')),
       normalized && data.questions.length>0 && e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:10}},'4. Graphiques et radar'),
-        e('p',null,'Les barres décrivent les réponses. Le radar présente les proportions d’une même question ; il ne représente pas une note de compétence.'),
-        e('label',null,'Question du radar',e('select',{value:P.selectedRadar(normalized)?.q||'',disabled:busy,style,onChange:ev=>setData(d=>({...d,radarQuestion:ev.target.value}))},
-          ...P.radarCandidates(normalized.questions).map((q,i)=>e('option',{key:i,value:q.q},q.q)))),
+        e('p',null,'Les barres décrivent les réponses ; les échelles en nombres sont propres à chaque question. Le radar nécessite des répondants et effectifs vérifiés. L’ordre de ses axes suit les options de la source ; sa surface n’est pas un score.'),
+        e('label',null,'Question du radar',e('select',{'aria-label':'Question du radar',value:String(P.selectedRadar(normalized)?.id??''),disabled:busy,style,onChange:ev=>setData(d=>({...d,radarQuestionId:ev.target.value}))},
+          ...P.radarCandidates(normalized.questions).map((q,i)=>e('option',{key:String(q.id),value:String(q.id)},`${i+1}. ${q.q}`)))),
         e('div',{className:'prevention-charts',dangerouslySetInnerHTML:{__html:P.chartsHTML(normalized)}})),
       e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:12}},'5. Préparer le rapport à la direction'),
+        e('p',{style:{marginBottom:12}},'La rédaction envoie à Anthropic l’établissement, la classe, la date, l’objectif, les conditions de passation, tes actions et ton suivi, ainsi que les libellés et résultats des réponses, y compris les mots des réponses libres. Le nom de l’animateur n’est pas envoyé. Vérifie tous ces champs avant génération : aucun nom, donnée personnelle ni information individuelle ou confidentielle.'),
         e('label',null,'Actions proposées (à adapter par l’équipe)',e('textarea',{value:meta.actions,rows:4,style,onChange:ev=>setMeta('actions',ev.target.value),placeholder:'Repères sur les usages du soir, sommeil, pauses et activités sans écran ; échange avec les familles. Supports visuels et situations concrètes.'})),
         e('label',null,'Suivi proposé',e('textarea',{value:meta.followup,rows:3,style,onChange:ev=>setMeta('followup',ev.target.value),placeholder:'Reprendre les mêmes questions après les séances et préciser les répondants à chaque passage.'})),
         e('label',{style:{display:'block',margin:'12px 0'}},e('input',{type:'checkbox',checked:ack,onChange:ev=>setAck(ev.target.checked)}),' J’ai vérifié les réponses, les répondants et les points à clarifier. Le rapport sera relu avant transmission.'),
@@ -165,7 +166,7 @@
               setData(restored);setDraft(null);setAck(false);setFiles([]);setErrors([]);setMessage('Questionnaire restauré ; vérifie-le avant diffusion.');
             }catch(err){setMessage(err.message);}finally{ev.target.value='';}
           }}))),
-        e('p',{style:{fontSize:12,marginTop:12}},'Le rapport avec Claude transmet les réponses agrégées vérifiées et le contexte de l’atelier à Anthropic pour une rédaction personnalisée. Une synthèse déjà générée est réutilisée tant que les données ne changent pas. Relis les constats et recommandations avant transmission. Les anciennes notes de quiz nécessitent les captures sources.'))
+        e('p',{style:{fontSize:12,marginTop:12}},'Le rapport avec Claude transmet les résultats, libellés et textes libres décrits ci-dessus à Anthropic pour une rédaction personnalisée. Une synthèse déjà générée est réutilisée tant que les données ne changent pas. Relis les constats et recommandations avant transmission. Les anciennes notes de quiz nécessitent les captures sources.'))
     );
   };
 })();

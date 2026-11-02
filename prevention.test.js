@@ -176,7 +176,7 @@ test('le radar choisi reste descriptif et se retrouve dans le rapport exporté',
   assert.equal(P.selectedRadar(normalized).q,second.q);
   const html=P.reportHTML(data);
   assert.match(html,/data-radar-values="25,50,0"/);
-  assert.match(html,/sa forme n’est pas une note/);
+  assert.match(html,/elles ne sont ni une note ni un indicateur à comparer/);
   assert.doesNotMatch(html,/objectif à atteindre de 100|Score global|réussite par thème/);
 });
 
@@ -211,8 +211,108 @@ test('une erreur Claude ou une référence inventée ne devient pas une synthès
   await assert.rejects(()=>P.generateSynthesis(data,'sk-test-fixture',async()=>({ok:true,json:async()=>({stop_reason:'max_tokens'})})),/incomplète/);
   const body=synthesisBody();body.analyse[0].sources=['Q999R999'];
   await assert.rejects(()=>P.generateSynthesis(data,'sk-test-fixture',async()=>({ok:true,json:async()=>({content:[{text:JSON.stringify(body)}]})})),/référence valide/);
-  const valid=synthesisBody();valid.conclusion='<img src=x onerror=alert(1)>';
+  const valid=synthesisBody();valid.conclusion='<img src=x onerror=alert(4)>';
   const synthesis=await P.generateSynthesis(data,'sk-test-fixture',async()=>({ok:true,json:async()=>({content:[{text:JSON.stringify(valid)}]})}));
   const html=P.reportHTML({...data,synthesis});
   assert.doesNotMatch(html,/<img src=x/);assert.match(html,/&lt;img src=x/);
+});
+
+const mockBody = body => async()=>({ok:true,json:async()=>({content:[{text:JSON.stringify(body)}]})});
+const aiSession = () => P.validateSession({version:P.VERSION,meta:{group:'Classe fictive',classSize:4},questions:[visualQuestion()]});
+
+test('les nombres inventés sont refusés dans toutes les sections, y compris avec une référence valide',async()=>{
+  for(const key of ['contexte','priorites','actions','suivi','conclusion']) {
+    const body=synthesisBody();body[key]='92 % des élèves dorment mal.';
+    await assert.rejects(()=>P.generateSynthesis(aiSession(),'sk-test-fixture',mockBody(body)),/nombre absent/);
+  }
+  const body=synthesisBody();body.analyse[0].texte='92 % jouent après minuit.';
+  await assert.rejects(()=>P.generateSynthesis(aiSession(),'sk-test-fixture',mockBody(body)),/nombre absent/);
+  body.analyse[0]={texte:'75 % ont répondu.',sources:['Q1R2']};
+  await assert.rejects(()=>P.generateSynthesis(aiSession(),'sk-test-fixture',mockBody(body)),/nombre absent/);
+  body.analyse[0]={texte:'3 sur 4, soit 75 %, ont sélectionné cette option.',sources:['Q1R1']};
+  assert.ok(await P.generateSynthesis(aiSession(),'sk-test-fixture',mockBody(body)));
+});
+
+test('les assertions de diagnostic et de causalité du contre-exemple sont refusées',async()=>{
+  for(const phrase of ['Les élèves sont addicts.','Les écrans causent leur fatigue.','Ils jouent le soir, ce qui cause leur fatigue.','La maîtrise des élèves est parfaite.']) {
+    const body=synthesisBody();body.conclusion=phrase;
+    await assert.rejects(()=>P.generateSynthesis(aiSession(),'sk-test-fixture',mockBody(body)),/diagnostic, une causalité ou un jugement/);
+  }
+  const body=synthesisBody();body.conclusion='Ces déclarations ne permettent aucun diagnostic d’addiction.';
+  assert.ok(await P.generateSynthesis(aiSession(),'sk-test-fixture',mockBody(body)));
+});
+
+test('le prompt oriente la rédaction vers les constats retenus et transmet les réserves',()=>{
+  const question=visualQuestion({options:[{label:'Choix prioritaire',count:3,percent:10,highlight:true},{label:'Autre choix',count:1}]});
+  const data=P.validateSession({version:P.VERSION,meta:{actions:'Action fictive',followup:'Suivi fictif'},questions:[question]});
+  const prompt=P.synthesisPrompt(data),payload=JSON.parse(prompt.split('DONNEES VERIFIEES :\n')[1]);
+  assert.match(prompt,/retenu=true.*priorités choisies/);
+  assert.match(prompt,/Interdiction de créer une note/);
+  assert.equal(payload.observations[0].retenu,true);assert.equal(payload.observations[1].retenu,false);
+  assert.match(payload.reserves.map(r=>r.reserve).join(' '),/divergent/);
+  assert.equal(payload.contexte.actions,'Action fictive');assert.equal(payload.contexte.followup,'Suivi fictif');
+});
+
+test('le rapport IA conserve les textes de l’animateur, affiche la date et place les réserves avant la prose',async()=>{
+  const data=P.validateSession({...aiSession(),meta:{...aiSession().meta,actions:'ACTION ANIMATEUR <à conserver>',followup:'SUIVI ANIMATEUR\nSeconde ligne'},questions:[visualQuestion({options:[{label:'A',count:1,highlight:true},{label:'B',count:2},{label:'C',count:0}]})]});
+  const synthesis=await P.generateSynthesis(data,'sk-test-fixture',mockBody(synthesisBody()));
+  synthesis.generatedAt='2026-11-02T12:00:00.000Z';
+  const html=P.reportHTML({...data,synthesis});
+  assert.match(html,/ACTION ANIMATEUR &lt;à conserver&gt;/);assert.match(html,/SUIVI ANIMATEUR<br>Seconde ligne/);
+  assert.match(html,/Actions proposées par l’animateur/);assert.match(html,/supports visuels|support visuel|repères visuels/);
+  assert.match(html,/02\/11\/2026[^<]*13:00/);assert.match(html,/heure de Paris/);
+  assert.match(html,/ne valident pas le sens du texte/);
+  assert.ok(html.indexOf('Points à clarifier avant diffusion') < html.indexOf('3. Synthèse pédagogique'));
+  assert.deepEqual(Array.from(html.matchAll(/<h2>(\d)\. /g),m=>m[1]),['1','2','3','4','5']);
+});
+
+test('les largeurs réelles des barres et leur échelle correspondent aux valeurs',()=>{
+  const noBase=visualQuestion({respondents:null,options:[{label:'A',count:1},{label:'B',count:2},{label:'C',count:0}]});
+  const html=P.chartsHTML({questions:[noBase]});
+  assert.match(html,/0 à 2 sélections/);assert.match(html,/une barre entière représente 2 sélections/);
+  assert.match(html,/data-value="1" width="100"/);assert.match(html,/data-value="2" width="200"/);assert.match(html,/data-value="0" width="0"/);
+  const withBase=visualQuestion({respondents:10,options:[{label:'A',count:1},{label:'B',count:2},{label:'C',count:0}]});
+  assert.match(P.chartsHTML({questions:[withBase]}),/data-value="10" width="20"/);
+});
+
+test('le radar exige une base connue, des effectifs vérifiés et entre 3 et 10 options cohérentes',()=>{
+  const unknown=visualQuestion({respondents:null,options:[{label:'A',count:1,percent:10},{label:'B',count:2,percent:20},{label:'C',count:0,percent:0}]});
+  assert.equal(P.radarCandidates([unknown]).length,0);
+  assert.equal(P.radarCandidates([visualQuestion({options:[{label:'A',percent:10},{label:'B',percent:20},{label:'C',percent:0}]})]).length,0);
+  for(const [length,expected] of [[2,0],[3,1],[10,1],[11,0]]) {
+    const question=visualQuestion({respondents:20,options:Array.from({length},(_,i)=>({label:String(i),count:1}))});
+    assert.equal(P.radarCandidates([question]).length,expected);
+  }
+  const under=visualQuestion({responseType:'single',options:[{label:'A',count:1},{label:'B',count:1},{label:'C',count:1}]});
+  assert.equal(P.radarCandidates([under]).length,0);
+});
+
+test('la géométrie du radar et ses numéros d’axes correspondent aux valeurs',()=>{
+  const question=visualQuestion({options:[{label:'Haut',count:2},{label:'Droite',count:1},{label:'Bas',count:0},{label:'Gauche',count:4}]});
+  const svg=P.radarSVG(question),points=svg.match(/data-radar-values="[^"]+" points="([^"]+)"/)[1].split(' ').map(p=>p.split(',').map(Number));
+  assert.deepEqual(points,[[210,137.5],[246.25,210],[210,210],[65,210]]);
+  assert.deepEqual(Array.from(svg.matchAll(/font-size="13"[^>]*>(\d+)<\/text>/g),m=>Number(m[1])),[1,2,3,4]);
+});
+
+test('deux questions au même titre restent distinctes dans le radar et après sauvegarde',()=>{
+  const first=visualQuestion({id:1,q:'Titre partagé'}),second=visualQuestion({id:2,q:'Titre partagé',options:[{label:'A',count:1},{label:'B',count:2},{label:'C',count:0}]});
+  const data=P.validateSession({version:P.VERSION,questions:[first,second],radarQuestionId:'2'});
+  assert.equal(P.selectedRadar(data).id,2);assert.equal(P.radarSelection(data).automatic,false);
+  assert.match(P.chartsHTML(data),/data-radar-values="25,50,0"/);
+  assert.equal(P.selectedRadar(P.validateSession(JSON.parse(JSON.stringify(data)))).id,2);
+  const legacy=P.validateSession({version:P.VERSION,questions:[first,second],radarQuestion:'Titre partagé'});
+  assert.equal(P.radarSelection(legacy).automatic,true);assert.match(P.chartsHTML(legacy),/Sélection automatique/);
+  assert.match(P.chartsHTML(legacy),/surface dépendent de cet ordre/);
+  const duplicates=P.validateSession({version:P.VERSION,questions:[first,{...second,id:1}]});
+  assert.equal(new Set(duplicates.questions.map(q=>String(q.id))).size,2);assert.equal(duplicates.questions.length,2);
+});
+
+test('la réponse Claude accepte les clôtures JSON et respecte les plafonds de références et paragraphes',async()=>{
+  const data=aiSession(),body=synthesisBody();
+  const synthesis=await P.generateSynthesis(data,'sk-test-fixture',async()=>({ok:true,json:async()=>({content:[{text:'```json\n'+JSON.stringify(body)+'\n```'}]})}));
+  assert.ok(synthesis.body.conclusion);
+  const many=synthesisBody();many.analyse=Array.from({length:9},()=>({...body.analyse[0]}));
+  await assert.rejects(()=>P.generateSynthesis(data,'sk-test-fixture',mockBody(many)),/Analyse Claude incomplète/);
+  const refs=synthesisBody();refs.analyse[0].sources=['Q1R1','Q1R2','Q1R3','Q1R1'];
+  await assert.rejects(()=>P.generateSynthesis(data,'sk-test-fixture',mockBody(refs)),/référence valide/);
 });
