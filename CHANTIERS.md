@@ -1,13 +1,12 @@
 # CHANTIERS — MentiAnalyser
 
-État au **02/11/2026**, réalisation d’AG-002 dans `4c3b2cd`, contrôles finaux réussis.
+État au **02/11/2026**, AG-002 publié et workflow réussi pour `d9feb3f`.
 
 ## En cours
 
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
-- Publication de la synthèse Claude et des visualisations à terminer.
 - AG-002 ouvert : rédaction personnalisée et radar descriptif à faire relire
   par Claude, IA d'un autre éditeur ; fournir la phrase relais à l'utilisateur.
 
@@ -27,10 +26,10 @@
 - Les CDN unpkg/cdnjs restent bloqués dans cette instance ; les tests
   navigateur utilisent les mêmes versions publiques préchargées depuis
   jsDelivr. Extraction IA réelle non validée.
-- Correctifs publiés : workflow du commit `1a34079` terminé avec conclusion
-  WORKFLOW_RUN_CONCLUSION_SUCCESS (test et déploiement). Preuve :
-  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41485996506
-  Cette preuve concerne AG-001 ; le déploiement d'AG-002 reste à vérifier.
+- Rapport Claude et visualisations publiés : workflow du commit `d9feb3f`
+  terminé avec WORKFLOW_RUN_CONCLUSION_SUCCESS (test et déploiement) :
+  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41499087705
+  Aucun changement applicatif après ce commit.
 - Les fichiers de travail de la classe sont dans /workspace/output,
   hors dépôt : ne pas les ajouter à Git. Relecture de l'animateur requise.
 

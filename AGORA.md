@@ -155,6 +155,8 @@ Pas de débordement horizontal à 390/1280 px. Barres vectorielles vérifiées
 visuellement dans le PDF sans impression des arrière-plans. Aucun appel API
 réel : contenu produit par le modèle en situation réelle restant à relire.
 Cette validation ne vaut pas une contradiction indépendante.
+Version à relire : `d9feb3f`. Workflow de tests et déploiement réussi :
+https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41499087705
 
 ## Blocs tranchés
 
