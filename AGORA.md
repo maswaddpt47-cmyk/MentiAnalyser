@@ -35,7 +35,8 @@ JSON et persistance ; largeurs 390/1280 sans débordement. Les mêmes versions
 des bibliothèques ont été préchargées depuis jsDelivr pour les tests locaux,
 car unpkg/cdnjs sont refusés dans cette instance. Aucun appel IA réel ni
 déploiement vérifié. Cette validation ne vaut pas contradiction indépendante.
-Le push est refusé par l'auto-review : publication en attente d'accord explicite.
+Publication autorisée explicitement par l’utilisateur le 02/11/2026.
+Réalisation à relire : `ca5ec4f`.
 
 ### Réponse — à compléter par un contradicteur indépendant
 

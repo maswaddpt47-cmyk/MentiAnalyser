@@ -1,11 +1,11 @@
 # CHANTIERS — MentiAnalyser
 
-État au **02/11/2026**, base distante `13d762d`, cadrage local `e9a79cf`.
+État au **02/11/2026**, réalisation `ca5ec4f`, cadrage `e9a79cf`.
 
 ## En cours
 
-- Publication du mode prévention en attente d'autorisation explicite :
-  l'auto-review a refusé le push du cadrage vers main. Aucun push réalisé.
+- Publication du mode prévention autorisée explicitement par l’utilisateur le
+  02/11/2026 : push et vérification du déploiement à terminer.
 - AG-001 ouvert dans AGORA.md : contradiction indépendante à relayer à une
   IA d'un autre éditeur ; les définitions métier restent à l'utilisateur.
 
