@@ -1,21 +1,31 @@
 # CHANTIERS — MentiAnalyser
 
-État au **02/11/2026**, réalisation `ca5ec4f`, cadrage `e9a79cf`.
+État au **02/11/2026**, base relue `91fef35`, réalisation `ca5ec4f`.
 
 ## En cours
 
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
-- AG-001 ouvert dans AGORA.md : contradiction indépendante à relayer à une
-  IA d'un autre éditeur ; les définitions métier restent à l'utilisateur.
+- AG-001 : réponse de Claude reçue dans `91fef35`, verdict **amendé**.
+  L'utilisateur n'a pas encore tranché. Aucun correctif applicatif fait à
+  l'occasion du pull ; conserver sa réponse sans la reformuler dans AGORA.md.
+- Écarts rapportés par Claude à vérifier et traiter après arbitrage : phrase
+  sur le poids d'un élève (classe / répondants), alerte sur les constats à
+  petit effectif, validation des types numériques, poursuite de l'extraction
+  après une question PDF invalide, couverture des tests par mutation.
+- Suggestion pédagogique du contradicteur : documenter les conditions de
+  passation (lecture à voix haute, aide à la lecture). À décider ; aucune
+  condition réelle de passation n'est connue de cette session.
 
 ## État vérifié
 
 - Mode prévention distinct, options éditables, inconnus conservés, sélection
   des constats, JSON versionné et rapport imprimable avec annexe et réserves.
 - 69 tests passent sous Node 20, dont 5 nouveaux ; confusion effectif /
-  pourcentage détectée par mutation d'une copie temporaire.
+  pourcentage à la normalisation détectée par mutation d'une copie temporaire.
+  Cette mesure ne couvre pas tous les calculs : Claude signale quatre
+  mutations survivantes dans sa réponse AG-001 ; contrôle à compléter.
 - Chromium : PNG et ZIP fictifs, ancien PDF du ZIP ignoré, API simulée,
   contrôle puis rapport/PDF, JSON, persistance et séparation des modes.
   Aucun débordement horizontal à 390 px et 1280 px.
