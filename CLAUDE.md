@@ -1,5 +1,9 @@
 # CLAUDE.md — Règles de travail pour ce projet
 
+Communication (consigne du 02/11/2026) : terminer chaque message par la
+prochaine étape concrète (action de l'IA, travail restant ou action attendue
+de l'utilisateur). Si le travail est terminé, le dire sans attendre une relance.
+
 Reprise : lire `CHANTIERS.md`. Décisions à trancher : consulter `AGORA.md`.
 AGORA : ouvrir un bloc avant tout changement de calcul, filtre, chiffre affiché,
 format de stockage, coût irréversible, contradiction d'une note, troisième

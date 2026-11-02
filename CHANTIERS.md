@@ -7,10 +7,11 @@
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
-- Déploiement de `ec61cdb` : tests GitHub réussis (13 s), étape Pages encore
-  « In progress / Deploying to github-pages » après plus de huit minutes.
-  Cause de la lenteur non déterminée ; aucun échec signalé. Délai de contrôle
-  dépassé, ne pas annoncer cette version en ligne. Reprendre le contrôle :
+- Déploiement de `ec61cdb` : tests GitHub réussis (13 s), publication Pages
+  échouée après 10 min 16 s : « Timeout reached, aborting! ». Cause du délai
+  non déterminée ; aucun défaut de code signalé. Nouvelle tentative déclenchée
+  par le commit documentaire de communication ; vérifier son résultat.
+  Tentative précédente :
   https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41508087944
 
 ## État vérifié
@@ -64,3 +65,7 @@
 - Radar : répondants et effectifs vérifiés, questions identifiées par ID,
   choix automatique signalé, surface sans signification d'indicateur.
 - Données fictives pour les tests ; aucune donnée réelle d'élève dans Git.
+
+- Communication : finir chaque message par la suite concrète, y compris
+  après un pull ou un blocage ; consigne enregistrée dans MD-LIB règle 18
+  (`bcfed2e`) et dans CLAUDE.md.
