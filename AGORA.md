@@ -42,7 +42,64 @@ Réalisation à relire : `ca5ec4f`.
 
 ### Réponse — à compléter par un contradicteur indépendant
 
-Auteur, commit lu, verdict, constat avec preuve, amendement éventuel.
+**Auteur** : Claude (Anthropic), session de contradiction — 02/11/2026.
+**Commit lu** : `ca5ec4f` (code identique à `e97733e`). Aucun code modifié.
+**Verdict** : amendé.
+
+**Confirmé (mesuré)**
+- 69/69 tests verts sous Node 22 (36 utils, 28 logic, 5 prévention).
+- Réponses multiples : dénominateur = répondants, pas la somme des sélections
+  (prevention.js:58). Sonde 10 répondants, 7/5/1 sélections → « 7 sur 10 ·
+  70 % », « 5 sur 10 · 50 % », « 1 sur 10 · 10 % », total 130 % sans alerte,
+  ce que l'annexe explique (prevention.js:90).
+- Effectif > répondants signalé en multiple (prevention.js:49) ; répondants
+  absents → « 4 sélection(s) · 40 % affichés », jamais de dénominateur inventé
+  (prevention.js:60-62, :36).
+- Réponse unique : somme ≠ répondants signalée dans les deux sens
+  (prevention.js:44) ; 1/3 → 33,3 % et 66,7 % ; 7 × 14 % toléré (:46).
+- Libres : aucune moyenne, contributions seules (prevention.js:40, :57).
+- Pas de score ni « bonne réponse » ; quiz séparé et JSON croisé refusé
+  (MentiAnalyser.html:303-304, prevention.js:67).
+
+**Écarts concrets**
+1. Deux bases dans le rapport. « un élève représente environ 8,3 % » est
+   calculé sur l'effectif de classe (prevention.js:85) ; tous les % affichés le
+   sont sur les répondants (:58). Sonde classe 12, 10 répondants : 1 élève =
+   8,3 % dans la méthode, mais « 1 sur 10 · 10 % » dans le constat. Amendement :
+   retirer la phrase ou l'exprimer par question sur les répondants.
+2. Ré-identification en petit effectif. Un constat retenu à 1 ou 2 élèves
+   (« Rien : 1 sur 10 ») part tel quel à la direction (prevention.js:77), sans
+   alerte. En SEGPA (classes de 12 à 16), c'est identifiant pour l'équipe.
+   Amendement : alerte « effectif ≤ 2 » dans warnings() sur les constats retenus.
+3. Faux zéros acceptés. `number()` (prevention.js:10-14) convertit `true` → 1
+   et `[]` → 0 sans erreur ; contraire au prompt « jamais 0 inventé »
+   (prevention.js:97). Amendement : n'accepter que number ou chaîne numérique.
+4. Perte silencieuse en PDF. Une option invalide jette dans normalizeQuestion
+   (MentiAnalyser.html:1400) ; le catch est au niveau fichier (:1417-1418) :
+   toutes les questions suivantes du PDF sont perdues, un seul motif affiché
+   (ex. « Pourcentage supérieur à 100. »), sans nombre ni intitulé.
+5. Couverture de tests plus faible qu'annoncé. Mutations sur prevention.js,
+   suite prévention : 1 tuée sur 5. Survivantes : % calculé depuis le % affiché
+   au lieu de l'effectif (:58) ; `sum !== respondents` → `sum >`
+   (:44) ; contrôle total ≈ 100 % neutralisé (:46, aucun test) ; garde free
+   retirée (:49). « Confusion % / effectif fait échouer la suite » n'est vrai
+   que pour l'inversion à la normalisation (:29).
+
+**Hypothèses non vérifiées (sans capture Mentimeter réelle)**
+- Si Mentimeter affiche en multiple des % rapportés aux sélections et non aux
+  répondants, chaque option déclenche « divergent » (:51) et le rapport
+  remplace le % affiché par le % recalculé (:58, :61). Signalé, pas silencieux.
+- Les nuages de mots n'affichent pas toujours de fréquences ; le prompt demande
+  un count (:97), risque de valeurs déduites de la taille des mots.
+
+**Pertinence 6ᵉ SEGPA**
+Adapté : effectifs « n sur N » avant le %, avertissements sur le déclaratif,
+pas de diagnostic, pas de causalité, pistes formulées comme propositions,
+supports visuels et consignes courtes (prevention.js:85-88). Manquant :
+conditions de passation (questions lues à voix haute, aide à la lecture,
+compréhension des libellés), utiles pour interpréter des réponses d'élèves en
+difficulté de lecture ; un champ libre dans meta suffirait. Les décimales
+(33,3 %) restent peu parlantes pour 12 élèves : « 4 élèves sur 12 » suffit.
 
 ## Blocs tranchés
 
