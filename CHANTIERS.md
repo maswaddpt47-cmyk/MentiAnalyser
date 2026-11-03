@@ -1,14 +1,14 @@
 # CHANTIERS — MentiAnalyser
 
-État au **03/11/2026** (base `291d60c`), retrait des fichiers vérifié localement.
+État au **03/11/2026** (code `209c135`), retrait des fichiers, workflow 27 réussi.
 
 ## En cours
 
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
-- Publication du retrait des fichiers à vérifier, puis contrôle utilisateur
-  dans « Importer les résultats sources ».
+- Boutons de retrait des fichiers à confirmer dans la version servie à
+  l’utilisateur, section « Importer les résultats sources ».
 
 ## État vérifié
 
@@ -21,6 +21,11 @@
   à l’API simulée. Réponses déjà extraites conservées, explication affichée et
   confirmation de relecture décochée. 390/1280 px sans débordement, même avec
   un nom de fichier long. Aucun appel API réel ni calcul de rapport modifié.
+- Retrait des fichiers (`209c135`) : la page GitHub du run 27 indique Success,
+  test 13 s et deploy 16 s (durée totale 39 s) :
+  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41624718847
+  Le vérificateur MD-LIB n’a pas conclu ; l’accès direct au site public reste
+  bloqué dans cette instance. Le succès ci-dessus est celui indiqué par Actions.
 - Capture utilisateur du 03/11/2026 : le titre / thème et les suggestions
   sont visibles dans la version publique ; les suggestions étaient repliées.
 - Sous les deux champs de contexte : suggestions dépliables, ajout explicite
