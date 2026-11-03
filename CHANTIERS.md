@@ -1,14 +1,13 @@
 # CHANTIERS — MentiAnalyser
 
-État au **03/11/2026** (base `fff2859`), récupération du rapport corrigée localement.
+État au **03/11/2026** (base `057875f`), rapport récupérable et suggestions des quatre champs vérifiés localement.
 
 ## En cours
 
-- Publier puis faire essayer le nouveau parcours du rapport. Le signalement
+- Publier puis faire essayer le nouveau parcours du rapport et les suggestions
+  des actions / du suivi. Le signalement
   réel est une rédaction qui reste en cours ; la cause côté appel réel à Claude
   n’est pas confirmée, sans réponse réseau de l’utilisateur ni appel API réel.
-- Ajouter aussi les suggestions liées au thème pour les actions et le suivi,
-  demande utilisateur restée en attente pendant l’indisponibilité du cloud.
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
@@ -17,6 +16,13 @@
 
 ## État vérifié
 
+- Actions et suivi : même aide que l’objectif et la passation, liée au titre /
+  thème ; suggestions à ajouter, cumuler et modifier, sans écrasement ni doublon.
+  Propositions à valider avec l’équipe, sans affirmation d’action déjà réalisée.
+  Chromium : écrans, harcèlement, réseaux sociaux, vie privée, mots de passe,
+  information, thème libre et titre vide ; texte conservé après changement de
+  thème, rechargement et reprise à l’identique dans le rapport. Suggestions
+  ouvertes sans débordement à 390/1280 px. Aucun nouvel appel API pour cette aide.
 - Rédaction dans la page principale, puis lien explicite « Ouvrir le rapport »
   et copie HTML téléchargeable ; PDF via « Imprimer / Enregistrer en PDF ».
   Progression et erreurs près des commandes ; aucun onglet de préparation vide.

@@ -13,31 +13,49 @@
     {match:/ecran|sommeil|jeux? video/, objectives:[
       ['Sommeil et équilibre', 'Ouvrir le dialogue sur les usages du soir, le sommeil, les pauses et la place des activités sans écran.'],
       ['Régulation des écrans', 'Construire avec les élèves des repères réalistes pour réguler le temps d’écran et organiser un suivi avec l’équipe éducative et les familles.']
-    ], condition:['Vocabulaire du temps d’écran', 'Les notions de durée d’écran, de pause et d’usage du soir ont été explicitées avant les réponses.']},
+    ], condition:['Vocabulaire du temps d’écran', 'Les notions de durée d’écran, de pause et d’usage du soir ont été explicitées avant les réponses.'], actions:[
+      ['Frise de la soirée', 'Proposer une frise visuelle de la soirée pour discuter des moments d’écran, du repos et du sommeil, puis choisir avec les élèves un ajustement réaliste à essayer.'],
+      ['Pauses et alternatives', 'Construire avec les élèves des repères concrets pour les pauses et les activités sans écran ; proposer un échange avec les familles sur les possibilités d’accompagnement.']
+    ], followup:['Retour sur les essais du soir', 'Revenir avec les élèves sur les repères essayés le soir, les difficultés rencontrées et les activités sans écran appréciées, afin d’ajuster les propositions.']},
     {match:/harcel/, objectives:[
       ['Reconnaître et réagir', 'Échanger sur les situations de harcèlement, leurs conséquences et les façons de demander de l’aide, sans solliciter de récit personnel.'],
       ['Entraide et adultes ressources', 'Identifier avec les élèves des réactions protectrices pour les victimes et les témoins, ainsi que les adultes ressources à solliciter.']
-    ], condition:['Situations de harcèlement fictives', 'Les situations de harcèlement discutées étaient fictives ; aucun récit personnel ni nom de personne impliquée n’a été demandé.']},
+    ], condition:['Situations de harcèlement fictives', 'Les situations de harcèlement discutées étaient fictives ; aucun récit personnel ni nom de personne impliquée n’a été demandé.'], actions:[
+      ['Réagir en témoin', 'Prévoir une activité sur des situations fictives de harcèlement pour discuter des réactions protectrices et des façons de soutenir une personne, sans demander de récit personnel.'],
+      ['Repérer les adultes ressources', 'Construire avec les élèves un support présentant les adultes et les moyens de demander de l’aide dans l’établissement, à valider avec l’équipe éducative.']
+    ], followup:['Retour sur les recours', 'Reprendre des situations fictives pour discuter des personnes à solliciter et des façons de demander de l’aide ; ajuster les supports avec l’équipe éducative.']},
     {match:/reseaux? socia|tiktok|instagram|snapchat/, objectives:[
       ['Usages des réseaux sociaux', 'Ouvrir le dialogue sur les pratiques déclarées sur les réseaux sociaux, les interactions et les difficultés rencontrées.'],
       ['Publications et recours', 'Travailler à partir de situations concrètes sur le partage de contenus, le respect d’autrui, les réglages de confidentialité et les moyens de demander de l’aide.']
-    ], condition:['Exemples de réseaux sociaux fictifs', 'Les exemples de publications et de profils utilisés étaient fictifs ; aucun compte personnel n’a été consulté.']},
+    ], condition:['Exemples de réseaux sociaux fictifs', 'Les exemples de publications et de profils utilisés étaient fictifs ; aucun compte personnel n’a été consulté.'], actions:[
+      ['Partager et respecter', 'Proposer des situations de publications fictives pour échanger sur le consentement, le respect d’autrui et les moyens de demander de l’aide.'],
+      ['Paramètres de confidentialité', 'Prévoir un atelier à partir de profils fictifs sur les choix de visibilité, le blocage et le signalement, sans consulter les comptes personnels des élèves.']
+    ], followup:['Choix de publication', 'Reprendre des exemples de publications fictives et faire expliquer les choix de partage et les recours possibles pour adapter les prochaines séances.']},
     {match:/vie privee|donnees? personnelles?|identite numerique|droit a l.image|confidential/, objectives:[
       ['Données et vie privée', 'Recueillir les représentations des élèves sur les données personnelles, la vie privée et le consentement au partage d’informations.'],
       ['Choix de protection', 'Construire des repères concrets pour choisir ce que l’on partage, protéger son identité numérique et respecter celle des autres.']
-    ], condition:['Données personnelles fictives', 'Les situations utilisaient des données fictives ; aucune information personnelle ni image d’élève n’a été demandée.']},
+    ], condition:['Données personnelles fictives', 'Les situations utilisaient des données fictives ; aucune information personnelle ni image d’élève n’a été demandée.'], actions:[
+      ['Choisir ce que l’on partage', 'Organiser un tri d’informations fictives pour discuter de la vie privée, des destinataires et du consentement avant un partage.'],
+      ['Images et respect d’autrui', 'Proposer des situations fictives autour du partage d’images pour construire avec les élèves des repères de respect et de protection de la vie privée.']
+    ], followup:['Repères de confidentialité', 'Revenir sur des situations fictives de partage pour discuter des choix de protection, sans recueillir de données personnelles des élèves.']},
     {match:/mots? de passe|hameconnage|phishing|cybersecurite|securite numerique/, objectives:[
       ['Comptes et messages', 'Ouvrir le dialogue sur la protection des comptes et les réactions face à un message ou à une demande inhabituelle.'],
       ['Vérifier et demander de l’aide', 'Travailler sur des situations fictives pour choisir un mot de passe protecteur, vérifier une demande et identifier un adulte ou un service ressource.']
-    ], condition:['Comptes et messages fictifs', 'Les exemples de comptes, de mots de passe et de messages étaient fictifs ; aucun mot de passe personnel n’a été demandé.']},
+    ], condition:['Comptes et messages fictifs', 'Les exemples de comptes, de mots de passe et de messages étaient fictifs ; aucun mot de passe personnel n’a été demandé.'], actions:[
+      ['Mots de passe fictifs', 'Prévoir une activité sur la protection des comptes avec des exemples fictifs, sans demander ni noter de mot de passe personnel.'],
+      ['Messages suspects', 'Comparer des messages fictifs pour discuter de la vérification de l’expéditeur, des demandes inhabituelles et des personnes à solliciter avant d’agir.']
+    ], followup:['Réagir à une demande inhabituelle', 'Reprendre des scénarios fictifs de messages ou de demandes pour faire expliquer les vérifications et les recours envisagés, puis adapter les supports.']},
     {match:/desinformation|fausses? info|fake news|esprit critique|medias|information/, objectives:[
       ['Rapport à l’information', 'Recueillir les pratiques et représentations des élèves face aux informations rencontrées dans les médias et en ligne.'],
       ['Vérifier avant de partager', 'Faire discuter des indices utiles pour distinguer un fait d’une opinion, identifier une source et vérifier une information avant de la partager.']
-    ], condition:['Supports d’information communs', 'Les élèves ont travaillé à partir des mêmes exemples d’informations ; le vocabulaire des sources, des faits et des opinions a été explicité.']}
+    ], condition:['Supports d’information communs', 'Les élèves ont travaillé à partir des mêmes exemples d’informations ; le vocabulaire des sources, des faits et des opinions a été explicité.'], actions:[
+      ['Vérifier une information', 'Comparer des exemples d’informations pour discuter de la source, de la date, des indices de fiabilité et de la distinction entre fait et opinion.'],
+      ['Avant de partager', 'Construire un support visuel rappelant les questions à se poser avant de partager une information, à partir de situations adaptées aux élèves.']
+    ], followup:['Habitudes de vérification', 'Revenir avec les élèves sur leurs pratiques déclarées de vérification et les obstacles rencontrés ; reprendre des exemples pour ajuster les séances.']}
   ];
   function contextSuggestions(title) {
     const theme=(title||'').trim();
-    if(!theme)return {objective:[],conditions:[]};
+    if(!theme)return {objective:[],conditions:[],actions:[],followup:[]};
     const normalized=theme.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[’']/g,' ');
     const profiles=themeExamples.filter(example=>example.match.test(normalized));
     return {
@@ -48,7 +66,15 @@
         ])],
       conditions:[...commonConditions,...(profiles.length?profiles.map(p=>p.condition):[
         ['Vocabulaire du thème',`Les mots et situations du questionnaire sur « ${theme} » ont été explicités avant les réponses.`]
-      ])]
+      ])],
+      actions:profiles.length?profiles.flatMap(p=>p.actions):[
+        ['Situation concrète sur le thème',`Proposer une situation fictive sur « ${theme} » pour construire avec les élèves des repères de prévention adaptés à leur quotidien.`],
+        ['Supports accessibles',`Prévoir des supports visuels et des consignes courtes sur « ${theme} », puis vérifier la compréhension à partir d’exemples concrets.`]
+      ],
+      followup:[['Reprendre le questionnaire','Reprendre les mêmes questions après les séances, en précisant les répondants et les conditions à chaque passage. Comparer les répartitions de la classe sans en déduire, à elles seules, un effet causal des actions.'],
+        ...(profiles.length?profiles.map(p=>p.followup):[
+          ['Retour sur le thème',`Prévoir un retour avec les élèves et l’équipe éducative sur les repères proposés autour de « ${theme} », les difficultés rencontrées et les suites à adapter.`]
+        ])]
     };
   }
   window.PreventionApp = function PreventionApp({analyse, unlock}) {
@@ -95,11 +121,11 @@
       const value=current.trim()?`${current}${current.endsWith('\n')?'':'\n'}${text}`:text;
       return {...d,meta:{...d.meta,[key]:value}};
     });
-    const contextField = (label,key,placeholder,help) => e('div',{style:{marginTop:12}},
+    const contextField = (label,key,placeholder,help,rows=3) => e('div',{style:{marginTop:12}},
       e('label',{htmlFor:`prevention-${key}`,style:{display:'block',marginBottom:4}},label),
-      e('textarea',{id:`prevention-${key}`,value:meta[key],onChange:ev=>setMeta(key,ev.target.value),placeholder,style,rows:3}),
+      e('textarea',{id:`prevention-${key}`,value:meta[key],onChange:ev=>setMeta(key,ev.target.value),placeholder,style,rows}),
       e('details',{style:{marginTop:8,padding:10,borderRadius:8,background:'#f4f8fa'}},
-        e('summary',{style:{cursor:'pointer',fontWeight:600,color:'#145b64'}},key==='objective'?'Suggestions d’objectifs':'Suggestions de conditions de passation'),
+        e('summary',{style:{cursor:'pointer',fontWeight:600,color:'#145b64'}},{objective:'Suggestions d’objectifs',conditions:'Suggestions de conditions de passation',actions:'Suggestions d’actions',followup:'Suggestions de suivi'}[key]),
         e('p',{style:{fontSize:13,margin:'8px 0'}},help),
         e('p',{style:{fontSize:13,margin:'8px 0',color:'#475569'}},meta.title.trim()?`Thème utilisé : ${meta.title.trim()}`:'Renseigne le titre / thème de l’atelier pour afficher les suggestions.'),
         ...suggestions[key].map(([title,text])=>{
@@ -263,10 +289,12 @@
         e('div',{className:'prevention-charts',dangerouslySetInnerHTML:{__html:P.chartsHTML(normalized)}})),
       e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:12}},'5. Préparer le rapport à la direction'),
         e('p',{style:{marginBottom:12}},'La rédaction envoie à Anthropic l’établissement, la classe, la date, l’objectif, les conditions de passation, tes actions et ton suivi, ainsi que les libellés et résultats des réponses, y compris les mots des réponses libres. Le nom de l’animateur n’est pas envoyé. Vérifie tous ces champs avant génération : aucun nom, donnée personnelle ni information individuelle ou confidentielle.'),
-        e('label',null,'Actions proposées (à adapter par l’équipe)',e('textarea',{value:meta.actions,rows:4,style,onChange:ev=>setMeta('actions',ev.target.value),placeholder:'Repères sur les usages du soir, sommeil, pauses et activités sans écran ; échange avec les familles. Supports visuels et situations concrètes.'})),
-        e('label',null,'Suivi proposé',e('textarea',{value:meta.followup,rows:3,style,onChange:ev=>setMeta('followup',ev.target.value),placeholder:'Reprendre les mêmes questions après les séances et préciser les répondants à chaque passage.'})),
+        contextField('Actions proposées (à adapter par l’équipe)','actions','Décrire les actions de prévention envisagées en lien avec le thème de l’atelier.',
+          'Déplie les suggestions liées au titre / thème, puis clique sur « Ajouter ». Adapte les propositions avec l’équipe ; elles ne décrivent pas des actions déjà réalisées.',4),
+        contextField('Suivi proposé','followup','Prévoir comment reprendre les échanges et observer les évolutions après les séances.',
+          'Clique sur « Ajouter » pour proposer un suivi lié au thème. Précise ensuite avec l’équipe les modalités et le moment du suivi.'),
         e('label',{style:{display:'block',margin:'12px 0'}},e('input',{type:'checkbox',checked:ack,onChange:ev=>setAck(ev.target.checked)}),' J’ai vérifié les réponses, les répondants et les points à clarifier. Le rapport sera relu avant transmission.'),
-        reportMessage && e('p',{role:'status',style:{background:'#fff7df',padding:12,marginBottom:12,borderRadius:8}},reportMessage),
+        reportMessage && (!report || currentReport) && e('p',{role:'status',style:{background:'#fff7df',padding:12,marginBottom:12,borderRadius:8}},reportMessage),
         e('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
           e('button',{style:{...btn,background:'#197d89',color:'#fff'},disabled:busy,onClick:()=>exportReport(true)},generating?'Rédaction par Claude…':'Rapport avec Claude / PDF'),
           e('button',{style:btn,disabled:busy,onClick:()=>exportReport(false)},'Rapport descriptif / PDF'),
@@ -284,7 +312,7 @@
             e('a',{href:currentReport.url,target:'_blank',rel:'noopener',style:btn},'Ouvrir le rapport'),
             e('a',{href:currentReport.url,download:'Rapport_prevention.html',style:btn},'Télécharger le rapport (HTML)')),
           e('p',null,'Pour obtenir le PDF : ouvre le rapport, clique sur « Imprimer / Enregistrer en PDF », puis choisis « Enregistrer au format PDF » comme destination.')),
-        report && !currentReport && e('p',null,'Les données ont changé : génère un nouveau rapport pour les données actuelles.'),
+        report && !currentReport && e('p',{role:'status'},'Les données ont changé : génère un nouveau rapport pour les données actuelles.'),
         e('p',{style:{fontSize:12,marginTop:12}},'Le rapport avec Claude transmet les résultats, libellés et textes libres décrits ci-dessus à Anthropic pour une rédaction personnalisée. Une synthèse déjà générée est réutilisée tant que les données ne changent pas. Le PDF s’enregistre depuis « Imprimer / Enregistrer en PDF » dans le rapport. Relis les constats et recommandations avant transmission. Les anciennes notes de quiz nécessitent les captures sources.'))
     );
   };
