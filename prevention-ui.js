@@ -1,6 +1,21 @@
 /* Parcours distinct : les données de prévention ne passent pas dans les KPI quiz. */
 (function () {
   'use strict';
+  const contextSuggestions = {
+    objective: [
+      ['État des lieux', 'Recueillir les usages déclarés des écrans et les effets ressentis afin d’identifier les besoins de prévention de la classe.'],
+      ['Dialogue et prévention', 'Ouvrir le dialogue sur le sommeil, les pauses et la place des activités sans écran, sans jugement ni notation.'],
+      ['Repères et suivi', 'Construire avec les élèves des repères réalistes pour réguler leurs usages et préparer un suivi avec l’équipe éducative et les familles.']
+    ],
+    conditions: [
+      ['Réponses individuelles', 'Les élèves ont répondu individuellement.'],
+      ['Lecture à voix haute', 'Les questions et les réponses proposées ont été lues à voix haute.'],
+      ['Compréhension des consignes', 'Les consignes ont été reformulées et la compréhension vérifiée avant les réponses.'],
+      ['Aide à la lecture', 'Une aide à la lecture a été proposée sans orienter les choix de réponse.'],
+      ['Échange collectif', 'Un temps d’échange collectif a suivi le recueil des réponses.'],
+      ['Recueil sans nom', 'Les réponses ont été recueillies sans nom d’élève.']
+    ]
+  };
   window.PreventionApp = function PreventionApp({analyse, unlock}) {
     const e = React.createElement, P = Prevention;
     const [data, setData] = React.useState(() => {
@@ -32,6 +47,24 @@
       e('span',{style:{display:'block',fontSize:12,fontWeight:600,marginBottom:4}},label),
       e('input',{disabled:busy,...extra,type,value:value??'',onChange:ev=>fn(ev.target.value),style}));
     const setMeta = (key,value) => setData(d=>({...d,meta:{...d.meta,[key]:value}}));
+    const addSuggestion = (key,text) => setData(d=>{
+      const current=d.meta[key]||'';
+      if(current.includes(text))return d;
+      const value=current.trim()?`${current}${current.endsWith('\n')?'':'\n'}${text}`:text;
+      return {...d,meta:{...d.meta,[key]:value}};
+    });
+    const contextField = (label,key,placeholder,help) => e('div',{style:{marginTop:12}},
+      e('label',{htmlFor:`prevention-${key}`,style:{display:'block',marginBottom:4}},label),
+      e('textarea',{id:`prevention-${key}`,value:meta[key],onChange:ev=>setMeta(key,ev.target.value),placeholder,style,rows:3}),
+      e('details',{style:{marginTop:8,padding:10,borderRadius:8,background:'#f4f8fa'}},
+        e('summary',{style:{cursor:'pointer',fontWeight:600,color:'#145b64'}},key==='objective'?'Suggestions d’objectifs':'Suggestions de conditions de passation'),
+        e('p',{style:{fontSize:13,margin:'8px 0'}},help),
+        ...contextSuggestions[key].map(([title,text])=>{
+          const added=(meta[key]||'').includes(text);
+          return e('div',{key:title,style:{display:'flex',alignItems:'flex-start',flexWrap:'wrap',gap:8,borderTop:'1px solid #d9e3e9',paddingTop:10,marginTop:10}},
+            e('p',{style:{flex:'1 1 260px',minWidth:0,fontSize:13}},e('strong',null,title,' : '),text),
+            e('button',{type:'button',style:btn,disabled:busy||added,'aria-label':`${added?'Suggestion ajoutée':'Ajouter la suggestion'} : ${title}`,onClick:()=>addSuggestion(key,text)},added?'Ajoutée':'Ajouter'));
+        })));
     const update = (index,patch) => {setAck(false);setDraft(visible.map((q,i)=>i===index?{...q,...patch}:q));};
     const warningRows = visible.flatMap(q=>{
       try {return P.warnings(P.normalizeQuestion(q),Number(meta.classSize)||null).map(w=>`${q.q} — ${w}`);}
@@ -110,8 +143,10 @@
           field('Classe / groupe',meta.group,v=>{setAck(false);setMeta('group',v);},'text',{placeholder:'Ex. 6ᵉ SEGPA'}),
           field('Effectif total de la classe',meta.classSize,v=>{setAck(false);setMeta('classSize',v===''?null:Number(v));},'number',{min:1,step:1}),
           field('Date du questionnaire',meta.date,v=>setMeta('date',v),'date'),field('Animateur / animatrice',meta.facilitator,v=>setMeta('facilitator',v))),
-        e('label',{style:{display:'block',marginTop:12}},'Objectif de l’atelier',e('textarea',{value:meta.objective,onChange:ev=>setMeta('objective',ev.target.value),placeholder:'Recueillir les habitudes, ouvrir le dialogue et adapter la prévention.',style,rows:2})),
-        e('label',{style:{display:'block',marginTop:12}},'Conditions de passation (facultatif)',e('textarea',{value:meta.conditions,onChange:ev=>setMeta('conditions',ev.target.value),placeholder:'À renseigner selon la séance : lecture à voix haute, aide à la compréhension, réponses individuelles… Sans nom ni information individuelle.',style,rows:2}))),
+        contextField('Objectif de l’atelier','objective','Recueillir les habitudes, ouvrir le dialogue et adapter la prévention.',
+          'Clique sur « Ajouter » pour insérer une proposition à la suite de ton texte, puis adapte-la à ton atelier.'),
+        contextField('Conditions de passation (facultatif)','conditions','À renseigner selon la séance : lecture à voix haute, aide à la compréhension, réponses individuelles… Sans nom ni information individuelle.',
+          'Ajoute uniquement les conditions qui correspondent au déroulement réel de la séance, puis adapte le texte. Tu peux préciser la durée et l’aide apportée, sans nom ni information individuelle.')),
       e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:12}},'2. Importer les résultats sources'),
         e('p',null,'Importe les captures de résultats, pas l’ancien rapport. L’analyse IA transmet ces fichiers au service Anthropic : utilise uniquement des résultats anonymes autorisés, sans noms ni informations individuelles.'),
         e('input',{type:'file',multiple:true,accept:'.png,.jpg,.jpeg,.zip,.pdf',disabled:busy,'aria-label':'Captures sources',onChange:ev=>selectFiles(Array.from(ev.target.files||[])),style:{margin:'12px 0',maxWidth:'100%'}}),

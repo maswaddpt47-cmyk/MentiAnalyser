@@ -1,9 +1,11 @@
 # CHANTIERS — MentiAnalyser
 
-État au **02/11/2026** (base `5049ed6`), amendements d’AG-002 déployés par le run 24.
+État au **03/11/2026** (base `97e9bb5`), amendements d’AG-002 déployés par le run 24.
 
 ## En cours
 
+- Suggestions d’objectifs et de conditions de passation vérifiées localement ;
+  publication du nouveau commit à vérifier.
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
@@ -12,6 +14,13 @@
 
 ## État vérifié
 
+- Sous les deux champs de contexte : suggestions dépliables, ajout explicite
+  à la suite du texte, cumul, modification libre et prévention des doublons.
+  Chromium sur données fictives : champs préservés, conditions laissées vides
+  jusqu’au choix, persistance après rechargement et reprise dans le rapport
+  descriptif. Aucun appel API ; pas de débordement à 390 et 1280 px, même avec
+  les suggestions ouvertes. Pas de changement de calcul ou de format de
+  stockage ; pas de nouveau bloc AGORA requis pour cet ajout réversible.
 - Mode prévention distinct, options éditables, inconnus conservés, sélection
   des constats, JSON versionné et rapport imprimable avec annexe et réserves.
 - 90 tests application passent sous Node 20 ; 22 mutations ciblées
@@ -53,7 +62,8 @@
 - AG-001 tranché par l'utilisateur : effectifs exacts conservés pour la
   direction, alerte sur les constats retenus à 1 ou 2 sélections/contributions,
   aucun nom ni rapprochement individuel. Conditions de passation facultatives,
-  à renseigner par l'animateur ; ne pas les inventer.
+  à renseigner par l'animateur ; ne pas les inventer. Les formulations suggérées
+  ne sont ajoutées qu’à son clic, selon le déroulement réel de la séance.
 - Une erreur de validation porte sur une question, pas sur la suite du PDF.
 - Le bouton principal du rapport fait rédiger la synthèse par Claude à partir
   des résultats calculés et vérifiés. Ne pas remplacer cette rédaction par un
