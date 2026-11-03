@@ -1,16 +1,16 @@
 # CHANTIERS — MentiAnalyser
 
-État au **03/11/2026** (base `97e9bb5`), amendements d’AG-002 déployés par le run 24.
+État au **03/11/2026** (base `11a8d1e`), amendements d’AG-002 déployés par le run 24.
 
 ## En cours
 
-- Suggestions d’objectifs et de conditions de passation vérifiées localement ;
-  publication du nouveau commit à vérifier.
+- Adaptation des suggestions au titre / thème vérifiée localement ;
+  publication de cette adaptation à vérifier.
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
-- Version servie à confirmer par l'utilisateur (le proxy de la session
-  refuse github.io) : Ctrl+Shift+R, puis vérifier un amendement d'AG-002.
+- Version servie à confirmer par l'utilisateur : ouvrir les suggestions dans
+  « Contexte du rapport » et modifier « Titre / thème de l’atelier ».
 
 ## État vérifié
 
@@ -21,6 +21,17 @@
   descriptif. Aucun appel API ; pas de débordement à 390 et 1280 px, même avec
   les suggestions ouvertes. Pas de changement de calcul ou de format de
   stockage ; pas de nouveau bloc AGORA requis pour cet ajout réversible.
+- Suggestions liées au champ existant « Titre / thème de l’atelier » : exemples
+  pour écrans, harcèlement, réseaux sociaux, vie privée, sécurité et information ;
+  formulations générales reprenant le thème saisi pour les autres sujets.
+  Sans titre, invitation à le renseigner. Aucun remplacement automatique des
+  textes déjà saisis quand le titre change. Chromium : changement écran /
+  cyberharcèlement / mots de passe / thème libre / titre vide, ajouts et édition,
+  persistance et rapport ; 390 et 1280 px sans débordement, aucun appel API.
+- Première version des suggestions (`11a8d1e`) : la page GitHub du run 25
+  indique Success, test 14 s et deploy 47 s :
+  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41621582093
+  Lecture directe du HTML public refusée (HTTP 403) le 03/11/2026.
 - Mode prévention distinct, options éditables, inconnus conservés, sélection
   des constats, JSON versionné et rapport imprimable avec annexe et réserves.
 - 90 tests application passent sous Node 20 ; 22 mutations ciblées
@@ -64,6 +75,9 @@
   aucun nom ni rapprochement individuel. Conditions de passation facultatives,
   à renseigner par l'animateur ; ne pas les inventer. Les formulations suggérées
   ne sont ajoutées qu’à son clic, selon le déroulement réel de la séance.
+- Le titre / thème pilote les suggestions de saisie ; un changement de thème
+  impose de relire les textes précédemment choisis. Les thèmes non reconnus
+  reçoivent des formulations générales à adapter, sans forcer les écrans.
 - Une erreur de validation porte sur une question, pas sur la suite du PDF.
 - Le bouton principal du rapport fait rédiger la synthèse par Claude à partir
   des résultats calculés et vérifiés. Ne pas remplacer cette rédaction par un

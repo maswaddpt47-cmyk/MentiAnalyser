@@ -1,21 +1,56 @@
 /* Parcours distinct : les données de prévention ne passent pas dans les KPI quiz. */
 (function () {
   'use strict';
-  const contextSuggestions = {
-    objective: [
-      ['État des lieux', 'Recueillir les usages déclarés des écrans et les effets ressentis afin d’identifier les besoins de prévention de la classe.'],
-      ['Dialogue et prévention', 'Ouvrir le dialogue sur le sommeil, les pauses et la place des activités sans écran, sans jugement ni notation.'],
-      ['Repères et suivi', 'Construire avec les élèves des repères réalistes pour réguler leurs usages et préparer un suivi avec l’équipe éducative et les familles.']
-    ],
-    conditions: [
+  const commonConditions = [
       ['Réponses individuelles', 'Les élèves ont répondu individuellement.'],
       ['Lecture à voix haute', 'Les questions et les réponses proposées ont été lues à voix haute.'],
       ['Compréhension des consignes', 'Les consignes ont été reformulées et la compréhension vérifiée avant les réponses.'],
       ['Aide à la lecture', 'Une aide à la lecture a été proposée sans orienter les choix de réponse.'],
       ['Échange collectif', 'Un temps d’échange collectif a suivi le recueil des réponses.'],
       ['Recueil sans nom', 'Les réponses ont été recueillies sans nom d’élève.']
-    ]
-  };
+  ];
+  const themeExamples = [
+    {match:/ecran|sommeil|jeux? video/, objectives:[
+      ['Sommeil et équilibre', 'Ouvrir le dialogue sur les usages du soir, le sommeil, les pauses et la place des activités sans écran.'],
+      ['Régulation des écrans', 'Construire avec les élèves des repères réalistes pour réguler le temps d’écran et organiser un suivi avec l’équipe éducative et les familles.']
+    ], condition:['Vocabulaire du temps d’écran', 'Les notions de durée d’écran, de pause et d’usage du soir ont été explicitées avant les réponses.']},
+    {match:/harcel/, objectives:[
+      ['Reconnaître et réagir', 'Échanger sur les situations de harcèlement, leurs conséquences et les façons de demander de l’aide, sans solliciter de récit personnel.'],
+      ['Entraide et adultes ressources', 'Identifier avec les élèves des réactions protectrices pour les victimes et les témoins, ainsi que les adultes ressources à solliciter.']
+    ], condition:['Situations de harcèlement fictives', 'Les situations de harcèlement discutées étaient fictives ; aucun récit personnel ni nom de personne impliquée n’a été demandé.']},
+    {match:/reseaux? socia|tiktok|instagram|snapchat/, objectives:[
+      ['Usages des réseaux sociaux', 'Ouvrir le dialogue sur les pratiques déclarées sur les réseaux sociaux, les interactions et les difficultés rencontrées.'],
+      ['Publications et recours', 'Travailler à partir de situations concrètes sur le partage de contenus, le respect d’autrui, les réglages de confidentialité et les moyens de demander de l’aide.']
+    ], condition:['Exemples de réseaux sociaux fictifs', 'Les exemples de publications et de profils utilisés étaient fictifs ; aucun compte personnel n’a été consulté.']},
+    {match:/vie privee|donnees? personnelles?|identite numerique|droit a l.image|confidential/, objectives:[
+      ['Données et vie privée', 'Recueillir les représentations des élèves sur les données personnelles, la vie privée et le consentement au partage d’informations.'],
+      ['Choix de protection', 'Construire des repères concrets pour choisir ce que l’on partage, protéger son identité numérique et respecter celle des autres.']
+    ], condition:['Données personnelles fictives', 'Les situations utilisaient des données fictives ; aucune information personnelle ni image d’élève n’a été demandée.']},
+    {match:/mots? de passe|hameconnage|phishing|cybersecurite|securite numerique/, objectives:[
+      ['Comptes et messages', 'Ouvrir le dialogue sur la protection des comptes et les réactions face à un message ou à une demande inhabituelle.'],
+      ['Vérifier et demander de l’aide', 'Travailler sur des situations fictives pour choisir un mot de passe protecteur, vérifier une demande et identifier un adulte ou un service ressource.']
+    ], condition:['Comptes et messages fictifs', 'Les exemples de comptes, de mots de passe et de messages étaient fictifs ; aucun mot de passe personnel n’a été demandé.']},
+    {match:/desinformation|fausses? info|fake news|esprit critique|medias|information/, objectives:[
+      ['Rapport à l’information', 'Recueillir les pratiques et représentations des élèves face aux informations rencontrées dans les médias et en ligne.'],
+      ['Vérifier avant de partager', 'Faire discuter des indices utiles pour distinguer un fait d’une opinion, identifier une source et vérifier une information avant de la partager.']
+    ], condition:['Supports d’information communs', 'Les élèves ont travaillé à partir des mêmes exemples d’informations ; le vocabulaire des sources, des faits et des opinions a été explicité.']}
+  ];
+  function contextSuggestions(title) {
+    const theme=(title||'').trim();
+    if(!theme)return {objective:[],conditions:[]};
+    const normalized=theme.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[’']/g,' ');
+    const profiles=themeExamples.filter(example=>example.match.test(normalized));
+    return {
+      objective:[['État des lieux',`Recueillir les pratiques et représentations déclarées sur le thème « ${theme} » afin d’identifier les besoins de prévention de la classe.`],
+        ...(profiles.length?profiles.flatMap(p=>p.objectives):[
+          ['Dialogue sur le thème',`Ouvrir un échange sur « ${theme} » à partir de situations concrètes adaptées aux élèves, sans jugement ni notation.`],
+          ['Repères et suivi',`Construire avec les élèves des repères de prévention sur « ${theme} » et prévoir un suivi avec l’équipe éducative.`]
+        ])],
+      conditions:[...commonConditions,...(profiles.length?profiles.map(p=>p.condition):[
+        ['Vocabulaire du thème',`Les mots et situations du questionnaire sur « ${theme} » ont été explicités avant les réponses.`]
+      ])]
+    };
+  }
   window.PreventionApp = function PreventionApp({analyse, unlock}) {
     const e = React.createElement, P = Prevention;
     const [data, setData] = React.useState(() => {
@@ -40,6 +75,7 @@
       catch { setMessage('Sauvegarde locale impossible : exporte le JSON pour conserver ton travail.'); }
     },[data]);
     const meta = data.meta, visible = draft === null ? data.questions : draft;
+    const suggestions = contextSuggestions(meta.title);
     const style = {border:'1px solid #b6c7d2',borderRadius:7,padding:'8px',font:'inherit',width:'100%',minWidth:0};
     const btn = {border:'1px solid #197d89',borderRadius:8,padding:'9px 13px',background:'#fff',color:'#145b64',fontWeight:600};
     const card = {padding:18,background:'#fff',border:'1px solid #d9e3e9',borderRadius:12,marginBottom:16,minWidth:0};
@@ -59,7 +95,8 @@
       e('details',{style:{marginTop:8,padding:10,borderRadius:8,background:'#f4f8fa'}},
         e('summary',{style:{cursor:'pointer',fontWeight:600,color:'#145b64'}},key==='objective'?'Suggestions d’objectifs':'Suggestions de conditions de passation'),
         e('p',{style:{fontSize:13,margin:'8px 0'}},help),
-        ...contextSuggestions[key].map(([title,text])=>{
+        e('p',{style:{fontSize:13,margin:'8px 0',color:'#475569'}},meta.title.trim()?`Thème utilisé : ${meta.title.trim()}`:'Renseigne le titre / thème de l’atelier pour afficher les suggestions.'),
+        ...suggestions[key].map(([title,text])=>{
           const added=(meta[key]||'').includes(text);
           return e('div',{key:title,style:{display:'flex',alignItems:'flex-start',flexWrap:'wrap',gap:8,borderTop:'1px solid #d9e3e9',paddingTop:10,marginTop:10}},
             e('p',{style:{flex:'1 1 260px',minWidth:0,fontSize:13}},e('strong',null,title,' : '),text),
@@ -139,12 +176,13 @@
       message && e('p',{role:'status',style:{...card,background:'#fff7df'}},message),
       e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:12}},'1. Contexte du rapport'),
         e('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,240px),1fr))',gap:12}},
-          field('Titre',meta.title,v=>setMeta('title',v)),field('Établissement',meta.school,v=>setMeta('school',v)),
+          field('Titre / thème de l’atelier',meta.title,v=>setMeta('title',v)),field('Établissement',meta.school,v=>setMeta('school',v)),
           field('Classe / groupe',meta.group,v=>{setAck(false);setMeta('group',v);},'text',{placeholder:'Ex. 6ᵉ SEGPA'}),
           field('Effectif total de la classe',meta.classSize,v=>{setAck(false);setMeta('classSize',v===''?null:Number(v));},'number',{min:1,step:1}),
           field('Date du questionnaire',meta.date,v=>setMeta('date',v),'date'),field('Animateur / animatrice',meta.facilitator,v=>setMeta('facilitator',v))),
-        contextField('Objectif de l’atelier','objective','Recueillir les habitudes, ouvrir le dialogue et adapter la prévention.',
-          'Clique sur « Ajouter » pour insérer une proposition à la suite de ton texte, puis adapte-la à ton atelier.'),
+        e('p',{style:{fontSize:12,marginTop:12}},'Les suggestions suivent le titre / thème de l’atelier. Si tu le modifies, relis les textes déjà saisis ou ajoutés.'),
+        contextField('Objectif de l’atelier','objective','Décrire les pratiques et représentations liées au thème, ouvrir le dialogue et adapter la prévention.',
+          'Clique sur « Ajouter » pour insérer une proposition liée au thème à la suite de ton texte, puis adapte-la à ton atelier.'),
         contextField('Conditions de passation (facultatif)','conditions','À renseigner selon la séance : lecture à voix haute, aide à la compréhension, réponses individuelles… Sans nom ni information individuelle.',
           'Ajoute uniquement les conditions qui correspondent au déroulement réel de la séance, puis adapte le texte. Tu peux préciser la durée et l’aide apportée, sans nom ni information individuelle.')),
       e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:12}},'2. Importer les résultats sources'),
