@@ -1,10 +1,10 @@
 # CHANTIERS — MentiAnalyser
 
-État au **03/11/2026** (base `057875f`), rapport récupérable et suggestions des quatre champs vérifiés localement.
+État au **03/11/2026** (code `376a0ef`), rapport récupérable et suggestions des quatre champs, workflow réussi.
 
 ## En cours
 
-- Publier puis faire essayer le nouveau parcours du rapport et les suggestions
+- Faire essayer le nouveau parcours du rapport et les suggestions
   des actions / du suivi. Le signalement
   réel est une rédaction qui reste en cours ; la cause côté appel réel à Claude
   n’est pas confirmée, sans réponse réseau de l’utilisateur ni appel API réel.
@@ -16,6 +16,11 @@
 
 ## État vérifié
 
+- Version `376a0ef` : la page GitHub Actions indique Success, test 15 s et
+  deploy 15 s (durée totale 40 s) :
+  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41646518549
+  Le vérificateur MD-LIB ne conclut pas dans cette instance ; cette preuve
+  vient de la page Actions, sans lecture directe de la version publique.
 - Actions et suivi : même aide que l’objectif et la passation, liée au titre /
   thème ; suggestions à ajouter, cumuler et modifier, sans écrasement ni doublon.
   Propositions à valider avec l’équipe, sans affirmation d’action déjà réalisée.
