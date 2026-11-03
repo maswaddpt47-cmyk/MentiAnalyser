@@ -1,9 +1,14 @@
 # CHANTIERS — MentiAnalyser
 
-État au **03/11/2026** (code `209c135`), retrait des fichiers, workflow 27 réussi.
+État au **03/11/2026** (base `fff2859`), récupération du rapport corrigée localement.
 
 ## En cours
 
+- Publier puis faire essayer le nouveau parcours du rapport. Le signalement
+  réel est une rédaction qui reste en cours ; la cause côté appel réel à Claude
+  n’est pas confirmée, sans réponse réseau de l’utilisateur ni appel API réel.
+- Ajouter aussi les suggestions liées au thème pour les actions et le suivi,
+  demande utilisateur restée en attente pendant l’indisponibilité du cloud.
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
@@ -12,6 +17,17 @@
 
 ## État vérifié
 
+- Rédaction dans la page principale, puis lien explicite « Ouvrir le rapport »
+  et copie HTML téléchargeable ; PDF via « Imprimer / Enregistrer en PDF ».
+  Progression et erreurs près des commandes ; aucun onglet de préparation vide.
+  Délai de 90 s indépendant d’AbortSignal.timeout, couvrant requête et corps JSON,
+  avec annulation réseau quand disponible. Aucun nouvel appel automatique.
+  Lien du rapport masqué après modification des données ou brouillon en attente.
+  Chromium fictif : attente, ouverture, impression/PDF, copie HTML, cache,
+  HTTP 503, délai dépassé, reprise, descriptif ; 390/1280 px sans débordement.
+  91 tests réels sous Node 24, dont 27 prévention ; 22 mutations détectées.
+  L’API est simulée dans ces vérifications. Aucun changement de calcul, de
+  prompt de rédaction ou de format JSON ; le service réel reste à vérifier.
 - Prévention : liste des fichiers retenus, « Retirer » par fichier et
   « Tout retirer », y compris pour les captures extraites d’un ZIP. Sélecteur
   réinitialisé pour permettre de reprendre un même fichier. Actions bloquées

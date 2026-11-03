@@ -220,6 +220,22 @@ test('une erreur Claude ou une référence inventée ne devient pas une synthès
 const mockBody = body => async()=>({ok:true,json:async()=>({content:[{text:JSON.stringify(body)}]})});
 const aiSession = () => P.validateSession({version:P.VERSION,meta:{group:'Classe fictive',classSize:4},questions:[visualQuestion()]});
 
+test('la rédaction sort de l’attente si la requête ou le corps de réponse reste bloqué',async t=>{
+  t.mock.timers.enable({apis:['setTimeout']});
+  for(const pendingBody of [false,true]) {
+    let signal;
+    const synthesis=P.generateSynthesis(aiSession(),'sk-test-fixture',async(url,options)=>{
+      signal=options.signal;
+      return pendingBody ? {ok:true,json:()=>new Promise(()=>{})} : new Promise(()=>{});
+    });
+    const failure=assert.rejects(synthesis,/délai de rédaction.*dépassé/);
+    await Promise.resolve();
+    t.mock.timers.tick(90000);
+    await failure;
+    assert.equal(signal.aborted,true);
+  }
+});
+
 test('les nombres inventés sont refusés dans toutes les sections, y compris avec une référence valide',async()=>{
   for(const key of ['contexte','priorites','actions','suivi','conclusion']) {
     const body=synthesisBody();body[key]='92 % des élèves dorment mal.';

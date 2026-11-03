@@ -68,6 +68,9 @@
     const [retry,setRetry] = React.useState(null);
     const [errors,setErrors] = React.useState([]);
     const [message,setMessage] = React.useState('');
+    const [reportMessage,setReportMessage] = React.useState('');
+    const [report,setReport] = React.useState(null);
+    const reportURL = React.useRef(null);
     const [ack,setAck] = React.useState(false);
     const [generating,setGenerating] = React.useState(false);
     const busy = status === 'loading' || generating || selecting;
@@ -76,6 +79,7 @@
       try { localStorage.setItem('menti_prevention_v1',JSON.stringify(data)); }
       catch { setMessage('Sauvegarde locale impossible : exporte le JSON pour conserver ton travail.'); }
     },[data]);
+    React.useEffect(()=>()=>{if(reportURL.current)URL.revokeObjectURL(reportURL.current);},[]);
     const meta = data.meta, visible = draft === null ? data.questions : draft;
     const suggestions = contextSuggestions(meta.title);
     const style = {border:'1px solid #b6c7d2',borderRadius:7,padding:'8px',font:'inherit',width:'100%',minWidth:0};
@@ -120,17 +124,17 @@
       setKey(key);setPassword('');return key;
     }
     async function exportReport(withClaude=true, force=false) {
-      if(draft!==null){setMessage('Vérifie puis applique les réponses avant de générer le rapport.');return;}
-      if(!data.questions.length){setMessage('Ajoute ou importe les résultats du questionnaire.');return;}
-      if(!meta.group.trim() || !Number(meta.classSize)){setMessage('Renseigne la classe et son effectif avant de générer le rapport.');return;}
-      if(!ack){setMessage('Relis les réponses et les points à clarifier, puis coche la confirmation.');return;}
-      let win;
+      if(busy)return;
+      if(draft!==null){setReportMessage('Vérifie puis applique les réponses avant de générer le rapport.');return;}
+      if(!data.questions.length){setReportMessage('Ajoute ou importe les résultats du questionnaire.');return;}
+      if(!meta.group.trim() || !Number(meta.classSize)){setReportMessage('Renseigne la classe et son effectif avant de générer le rapport.');return;}
+      if(!ack){setReportMessage('Relis les réponses et les points à clarifier, puis coche la confirmation.');return;}
+      setGenerating(true);setReport(null);setReportMessage('Préparation du rapport…');
+      if(reportURL.current){URL.revokeObjectURL(reportURL.current);reportURL.current=null;}
       try {
         let snapshot=P.validateSession(data);
-        win=window.open('','_blank');
-        if(win){win.opener=null;win.document.write('<p>Préparation du rapport…</p>');}
         if(withClaude && (force || !P.hasCurrentSynthesis(snapshot))) {
-          setGenerating(true);setMessage('Claude rédige la synthèse pédagogique à partir des réponses vérifiées…');
+          setReportMessage('Claude rédige la synthèse pédagogique. Le bouton « Ouvrir le rapport » apparaîtra ici une fois la rédaction terminée.');
           const key=await getKey();
           const synthesis=await P.generateSynthesis(snapshot,key);
           if(P.synthesisSource(P.validateSession(latest.current))!==synthesis.source)
@@ -139,10 +143,17 @@
         }
         if(!withClaude)snapshot={...snapshot,synthesis:null};
         const html=P.reportHTML(snapshot);
-        if(!win){download(html,'Rapport_prevention.html','text/html;charset=utf-8');setMessage('Rapport HTML téléchargé : ouvre-le puis choisis Imprimer / Enregistrer en PDF.');return;}
-        win.document.open();win.document.write(html);win.document.close();
-        setMessage(withClaude?'Rapport avec synthèse Claude et graphiques ouvert. Relis-le avant transmission, puis enregistre-le en PDF.':'Rapport descriptif avec graphiques ouvert.');
-      } catch(err){if(win)win.close();setMessage(err.message);}
+        const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
+        reportURL.current=url;
+        // Le rapport descriptif n'utilise pas la synthèse, mais reste lié aux données courantes.
+        setReport({url,fingerprint:JSON.stringify(withClaude?snapshot:P.validateSession(latest.current))});
+        setReportMessage('Rapport prêt. Utilise « Ouvrir le rapport », puis « Imprimer / Enregistrer en PDF ». Relis-le avant transmission.');
+      } catch(err){
+        const detail=err.name==='TimeoutError' || err.name==='AbortError'
+          ? 'Le délai de rédaction de Claude est dépassé. Réessaie depuis MentiAnalyser.'
+          : err instanceof TypeError ? 'La connexion à Claude a échoué. Vérifie ta connexion et réessaie depuis MentiAnalyser.' : err.message;
+        setReportMessage(detail);
+      }
       finally {setGenerating(false);}
     }
     async function selectFiles(list) {
@@ -184,6 +195,7 @@
     let normalized;
     try {normalized=P.validateSession(data);}catch {normalized=null;}
     const noDraft = draft === null;
+    const currentReport=noDraft && normalized && report?.fingerprint===JSON.stringify(normalized) ? report : null;
     return e('main',{style:{maxWidth:1050,margin:'0 auto',padding:'20px 16px',overflowWrap:'anywhere'}},
       e('h1',{style:{fontSize:24,color:'#197d89',marginBottom:8}},'Usages des écrans et prévention'),
       e('p',{style:{marginBottom:16}},'Un bilan des pratiques déclarées et des besoins d’accompagnement, destiné à l’équipe éducative. Les résultats sont conservés dans ce navigateur ; exporte le JSON pour les transférer.'),
@@ -254,6 +266,7 @@
         e('label',null,'Actions proposées (à adapter par l’équipe)',e('textarea',{value:meta.actions,rows:4,style,onChange:ev=>setMeta('actions',ev.target.value),placeholder:'Repères sur les usages du soir, sommeil, pauses et activités sans écran ; échange avec les familles. Supports visuels et situations concrètes.'})),
         e('label',null,'Suivi proposé',e('textarea',{value:meta.followup,rows:3,style,onChange:ev=>setMeta('followup',ev.target.value),placeholder:'Reprendre les mêmes questions après les séances et préciser les répondants à chaque passage.'})),
         e('label',{style:{display:'block',margin:'12px 0'}},e('input',{type:'checkbox',checked:ack,onChange:ev=>setAck(ev.target.checked)}),' J’ai vérifié les réponses, les répondants et les points à clarifier. Le rapport sera relu avant transmission.'),
+        reportMessage && e('p',{role:'status',style:{background:'#fff7df',padding:12,marginBottom:12,borderRadius:8}},reportMessage),
         e('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
           e('button',{style:{...btn,background:'#197d89',color:'#fff'},disabled:busy,onClick:()=>exportReport(true)},generating?'Rédaction par Claude…':'Rapport avec Claude / PDF'),
           e('button',{style:btn,disabled:busy,onClick:()=>exportReport(false)},'Rapport descriptif / PDF'),
@@ -265,7 +278,14 @@
               setData(restored);setDraft(null);setAck(false);setFiles([]);setErrors([]);setMessage('Questionnaire restauré ; vérifie-le avant diffusion.');
             }catch(err){setMessage(err.message);}finally{ev.target.value='';}
           }}))),
-        e('p',{style:{fontSize:12,marginTop:12}},'Le rapport avec Claude transmet les résultats, libellés et textes libres décrits ci-dessus à Anthropic pour une rédaction personnalisée. Une synthèse déjà générée est réutilisée tant que les données ne changent pas. Relis les constats et recommandations avant transmission. Les anciennes notes de quiz nécessitent les captures sources.'))
+        currentReport && e('aside',{style:{marginTop:12,padding:12,background:'#edf6f8',borderRadius:8}},
+          e('strong',null,'Rapport disponible'),
+          e('div',{style:{display:'flex',gap:10,flexWrap:'wrap',margin:'10px 0'}},
+            e('a',{href:currentReport.url,target:'_blank',rel:'noopener',style:btn},'Ouvrir le rapport'),
+            e('a',{href:currentReport.url,download:'Rapport_prevention.html',style:btn},'Télécharger le rapport (HTML)')),
+          e('p',null,'Pour obtenir le PDF : ouvre le rapport, clique sur « Imprimer / Enregistrer en PDF », puis choisis « Enregistrer au format PDF » comme destination.')),
+        report && !currentReport && e('p',null,'Les données ont changé : génère un nouveau rapport pour les données actuelles.'),
+        e('p',{style:{fontSize:12,marginTop:12}},'Le rapport avec Claude transmet les résultats, libellés et textes libres décrits ci-dessus à Anthropic pour une rédaction personnalisée. Une synthèse déjà générée est réutilisée tant que les données ne changent pas. Le PDF s’enregistre depuis « Imprimer / Enregistrer en PDF » dans le rapport. Relis les constats et recommandations avant transmission. Les anciennes notes de quiz nécessitent les captures sources.'))
     );
   };
 })();
