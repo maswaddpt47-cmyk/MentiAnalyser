@@ -1,11 +1,9 @@
 # CHANTIERS — MentiAnalyser
 
-État au **03/11/2026** (base `11a8d1e`), amendements d’AG-002 déployés par le run 24.
+État au **03/11/2026** (code `f6d48b1`), suggestions liées au thème, workflow 26 réussi.
 
 ## En cours
 
-- Adaptation des suggestions au titre / thème vérifiée localement ;
-  publication de cette adaptation à vérifier.
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
@@ -28,6 +26,11 @@
   textes déjà saisis quand le titre change. Chromium : changement écran /
   cyberharcèlement / mots de passe / thème libre / titre vide, ajouts et édition,
   persistance et rapport ; 390 et 1280 px sans débordement, aucun appel API.
+- Adaptation au thème (`f6d48b1`) : la page GitHub du run 26 indique Success,
+  test 12 s et deploy 13 s (durée totale 34 s) :
+  https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41622733874
+  Le vérificateur MD-LIB n’a pas conclu ; cette preuve vient de la page Actions,
+  pas d’une lecture du site public, toujours à confirmer par l’utilisateur.
 - Première version des suggestions (`11a8d1e`) : la page GitHub du run 25
   indique Success, test 14 s et deploy 47 s :
   https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41621582093
