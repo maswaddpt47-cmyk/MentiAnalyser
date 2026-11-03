@@ -1,17 +1,28 @@
 # CHANTIERS — MentiAnalyser
 
-État au **03/11/2026** (code `f6d48b1`), suggestions liées au thème, workflow 26 réussi.
+État au **03/11/2026** (base `291d60c`), retrait des fichiers vérifié localement.
 
 ## En cours
 
 - Vérification directe du HTML publié encore bloquée par le proxy (403 vers
   maswaddpt47-cmyk.github.io) ; API GitHub également bloquée. Le vérificateur
   MD-LIB ne peut donc pas conclure malgré le succès affiché par Actions.
-- Version servie à confirmer par l'utilisateur : ouvrir les suggestions dans
-  « Contexte du rapport » et modifier « Titre / thème de l’atelier ».
+- Publication du retrait des fichiers à vérifier, puis contrôle utilisateur
+  dans « Importer les résultats sources ».
 
 ## État vérifié
 
+- Prévention : liste des fichiers retenus, « Retirer » par fichier et
+  « Tout retirer », y compris pour les captures extraites d’un ZIP. Sélecteur
+  réinitialisé pour permettre de reprendre un même fichier. Actions bloquées
+  pendant la préparation et l’analyse ; aucune analyse possible sans fichier.
+  Chromium sur données fictives : retrait PDF/PNG/ZIP extrait, suppression de
+  la sélection et réimport identique ; seul le fichier conservé a été transmis
+  à l’API simulée. Réponses déjà extraites conservées, explication affichée et
+  confirmation de relecture décochée. 390/1280 px sans débordement, même avec
+  un nom de fichier long. Aucun appel API réel ni calcul de rapport modifié.
+- Capture utilisateur du 03/11/2026 : le titre / thème et les suggestions
+  sont visibles dans la version publique ; les suggestions étaient repliées.
 - Sous les deux champs de contexte : suggestions dépliables, ajout explicite
   à la suite du texte, cumul, modification libre et prévention des doublons.
   Chromium sur données fictives : champs préservés, conditions laissées vides
@@ -95,6 +106,8 @@
 - Radar : répondants et effectifs vérifiés, questions identifiées par ID,
   choix automatique signalé, surface sans signification d'indicateur.
 - Données fictives pour les tests ; aucune donnée réelle d'élève dans Git.
+- Retirer un fichier modifie la sélection de la prochaine analyse. Les réponses
+  déjà extraites restent à retirer explicitement dans « Vérifier les réponses ».
 
 - Communication : finir chaque message par la suite concrète, y compris
   après un pull ou un blocage ; consigne enregistrée dans MD-LIB règle 18

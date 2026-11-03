@@ -59,6 +59,8 @@
     });
     const [draft, setDraft] = React.useState(null);
     const [files,setFiles] = React.useState([]);
+    const [selecting,setSelecting] = React.useState(false);
+    const fileInput = React.useRef(null);
     const [password,setPassword] = React.useState('');
     const [apiKey,setKey] = React.useState('');
     const [status,setStatus] = React.useState('idle');
@@ -68,7 +70,7 @@
     const [message,setMessage] = React.useState('');
     const [ack,setAck] = React.useState(false);
     const [generating,setGenerating] = React.useState(false);
-    const busy = status === 'loading' || generating;
+    const busy = status === 'loading' || generating || selecting;
     const latest=React.useRef(data);latest.current=data;
     React.useEffect(()=>{
       try { localStorage.setItem('menti_prevention_v1',JSON.stringify(data)); }
@@ -144,6 +146,8 @@
       finally {setGenerating(false);}
     }
     async function selectFiles(list) {
+      if(busy || !list.length)return;
+      setSelecting(true);setMessage('');setAck(false);
       try {
         const all=[];
         for(const f of list) {
@@ -156,14 +160,26 @@
             if(hasImages && entries.some(x=>/\.pdf$/i.test(x.name)))setMessage('Les captures du ZIP sont retenues ; le PDF est écarté pour éviter de réanalyser un rapport déjà généré.');
           } else if(/\.(png|jpe?g|pdf)$/i.test(f.name)) all.push(f);
         }
-        setFiles(all);setErrors([]);setStatus('idle');
+        setFiles(all);setErrors([]);setStatus('idle');setProgress(0);setRetry(null);
+        if(!all.length)setMessage('Aucun fichier PNG, JPEG ou PDF utilisable dans cette sélection.');
       } catch(err){setMessage('Impossible de lire les fichiers : '+err.message);}
+      finally {setSelecting(false);}
+    }
+    function removeFile(index) {
+      if(busy)return;
+      setFiles(current=>index===null?[]:current.filter((_,i)=>i!==index));
+      setErrors([]);setStatus('idle');setProgress(0);setRetry(null);setAck(false);
+      setMessage(data.questions.length || draft!==null
+        ? 'Sélection mise à jour. Les réponses déjà extraites sont conservées ; retire-les dans « Vérifier les réponses » si nécessaire.'
+        : 'Sélection mise à jour. Seuls les fichiers encore affichés seront analysés.');
     }
     async function runAnalysis() {
+      if(busy || !files.length)return;
+      setStatus('loading');setProgress(0);setRetry(null);
       try {
         const key=await getKey();setMessage('');setAck(false);
         await analyse(files,key,setStatus,setProgress,setRetry,results=>setDraft(results),setErrors,()=>{},'', 'prevention');
-      } catch(err){setMessage(err.message);}
+      } catch(err){setStatus('idle');setMessage(err.message);}
     }
     let normalized;
     try {normalized=P.validateSession(data);}catch {normalized=null;}
@@ -187,11 +203,21 @@
           'Ajoute uniquement les conditions qui correspondent au déroulement réel de la séance, puis adapte le texte. Tu peux préciser la durée et l’aide apportée, sans nom ni information individuelle.')),
       e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:12}},'2. Importer les résultats sources'),
         e('p',null,'Importe les captures de résultats, pas l’ancien rapport. L’analyse IA transmet ces fichiers au service Anthropic : utilise uniquement des résultats anonymes autorisés, sans noms ni informations individuelles.'),
-        e('input',{type:'file',multiple:true,accept:'.png,.jpg,.jpeg,.zip,.pdf',disabled:busy,'aria-label':'Captures sources',onChange:ev=>selectFiles(Array.from(ev.target.files||[])),style:{margin:'12px 0',maxWidth:'100%'}}),
-        e('p',null,`${files.length} fichier(s) source(s) sélectionné(s).`),
+        e('input',{ref:fileInput,type:'file',multiple:true,accept:'.png,.jpg,.jpeg,.zip,.pdf',disabled:busy,'aria-label':'Captures sources',onChange:ev=>{
+          const selected=Array.from(ev.target.files||[]);ev.target.value='';selectFiles(selected);
+        },style:{display:'none'}}),
+        e('div',{style:{display:'flex',gap:10,flexWrap:'wrap',margin:'12px 0'}},
+          e('button',{type:'button',style:btn,disabled:busy,onClick:()=>fileInput.current?.click()},selecting?'Ouverture des fichiers…':'Choisir des fichiers'),
+          files.length>0 && e('button',{type:'button',style:btn,disabled:busy,onClick:()=>removeFile(null)},'Tout retirer')),
+        e('p',{'aria-live':'polite'},`${files.length} fichier(s) source(s) sélectionné(s).`),
+        files.length>0 && e('ul',{'aria-label':'Fichiers sélectionnés pour l’analyse',style:{listStyle:'none',padding:0,margin:'10px 0'}},
+          ...files.map((file,index)=>e('li',{key:`${file.name}-${index}`,style:{display:'flex',alignItems:'center',flexWrap:'wrap',gap:8,padding:'8px 0',borderBottom:'1px solid #d9e3e9'}},
+            e('span',{style:{flex:'1 1 240px',minWidth:0,overflowWrap:'anywhere'}},file.name),
+            e('button',{type:'button',style:btn,disabled:busy,'aria-label':`Retirer ${file.name}`,onClick:()=>removeFile(index)},'Retirer')))),
+        e('p',{style:{fontSize:12,margin:'8px 0'}},'Un nouveau choix de fichiers remplace cette sélection. Retirer un fichier agit sur la prochaine analyse ; les réponses déjà extraites se retirent dans « Vérifier les réponses ».'),
         field('Mot de passe IA (analyse et rapport Claude)',password,setPassword,'password',{autoComplete:'off',disabled:busy}),
         e('div',{style:{display:'flex',gap:10,flexWrap:'wrap',marginTop:12}},
-          e('button',{style:btn,disabled:busy||!files.length,onClick:runAnalysis},busy?`Analyse ${progress}/${files.length}…`:'Analyser les captures'),
+          e('button',{style:btn,disabled:busy||!files.length,onClick:runAnalysis},status==='loading'?`Analyse ${progress}/${files.length}…`:'Analyser les captures'),
           e('button',{style:btn,disabled:busy,onClick:()=>{setAck(false);setDraft([...visible,{kind:'survey',id:Date.now(),q:'Nouvelle question',theme:'Usages des écrans',responseType:'unknown',respondents:null,options:[{label:'Réponse à compléter',count:null,percent:null}],sourceFile:'Saisie manuelle',note:''}]);}},'Ajouter une question manuellement')),
         retry && e('p',null,retry),
         errors.length>0 && e('div',{role:'alert'},e('p',null,`${errors.length} fichier(s) ou question(s) non restitué(s) : vérifier avant diffusion.`),...errors.map((x,i)=>e('p',{key:i},`${x.file} : ${x.motif}`)))),
