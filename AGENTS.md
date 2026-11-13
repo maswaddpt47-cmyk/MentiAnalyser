@@ -5,6 +5,39 @@ Cette copie contient les règles essentielles pour démarrer sans dépendre
 d’un accès réseau. Les consignes explicites de la session et les règles
 spécifiques du projet restent applicables.
 
+## Autorisations — accès complet (consigne de l’utilisateur du 04/11/2026)
+
+**L’utilisateur donne toutes les autorisations pour le travail demandé** : « je
+voudrais lui donner toutes les permissions » (04/11/2026), après « Arrête de me
+demander les autorisations, je te les donnes » (31/10/2026). Codex agit, puis
+rend compte. Il ne demande jamais « je peux… ? », « veux-tu que je… ? »,
+« je continue ? » ni « tu confirmes ? ».
+
+**Sans rien demander** :
+- lire, créer, modifier et déplacer les fichiers du dépôt ; installer les
+  dépendances déclarées ;
+- lancer tests, scripts, navigateur et toute commande utile à la tâche ;
+- `git fetch`, `git merge --ff-only`, commits, push selon la politique du projet
+  (sur `main` quand le projet le prescrit) ; mettre à jour `CHANTIERS.md` ;
+  répondre dans `AGORA.md` ;
+- corriger ses propres erreurs ; après un échec, changer de méthode sans
+  redemander.
+
+**Seules exceptions, à demander avant d’agir** (une question par décision, ou
+des choix numérotés) :
+1. suppression irréversible de données (purge, archivage qui efface,
+   restauration qui écrase) ;
+2. réécriture d’historique publié (`push --force`, `reset` d’une branche
+   poussée, `filter-repo`) ;
+3. changement de format de stockage ou d’export, migration ;
+4. écart à ce que l’utilisateur a demandé : il décide du *quoi* ; le *comment*
+   est laissé à Codex, qui choisit l’option recommandée et la nomme dans son
+   compte rendu.
+
+**Jamais, même avec cette autorisation** : lire une sauvegarde réelle ou un
+fichier d’usagers ; publier une donnée personnelle ; contourner un refus de la
+plateforme (le signaler une fois, puis continuer le reste).
+
 ## Au début de chaque session
 
 1. Vérifier le dépôt, sa branche par défaut, la branche de session et l’état Git.
@@ -31,6 +64,10 @@ spécifiques du projet restent applicables.
   Préférer un connecteur fonctionnel. Ne pas contourner un refus d’accès.
 - Continuer les tâches indépendantes d’une réponse manquante. Respecter les
   autorisations déjà accordées et les limites explicites, dont la lecture seule.
+- Fin de tâche (04/11/2026) : vérifier que les opérations et revues nécessaires
+  sont terminées, puis conclure le message final par une ligne distincte :
+  **✅ TÂCHE TERMINÉE**. Si un traitement reste en cours ou bloque la livraison,
+  préciser son état sans annoncer la tâche terminée.
 
 ## Décisions, preuves et périmètre
 
@@ -52,6 +89,9 @@ spécifiques du projet restent applicables.
 
 - Respecter le workflow du projet, sa branche par défaut et les contraintes
   de la plateforme. Ne pas imposer `main` à un dépôt configuré autrement.
+- « Main toujours » (MD-LIB `git-workflow.md` §3) : `CLAUDE.md` prescrit la
+  publication sur `main` ; après chaque livraison vérifiée, `git fetch origin main`
+  puis avance rapide vers `main`, sans attendre la fin de session ni redemander.
 - Un commit conventionnel en français par modification logique. Aucun
   force-push ni écrasement d’un changement concurrent.
 - Juste avant de modifier un fichier partagé, actualiser et relire son état.
@@ -77,6 +117,10 @@ spécifiques du projet restent applicables.
 - Distinguer code local, code poussé, aperçu et production. Avant toute annonce
   « en ligne », vérifier le commit réellement déployé et les étapes de publication.
   Suivre `MD-LIB/deploiement.md` et son vérificateur lorsqu’ils s’appliquent.
+- **Avant de pousser, lancer tous les tests que le déploiement exécutera, dans
+  ses conditions** (chaque script listé par le workflow, chaque fuseau), pas
+  seulement ceux du changement : il casse aussi les tests de son voisinage
+  (MD-LIB `collaboration.md` règle 60, 01/11/2026).
 - Ne pas désactiver un contrôle requis pour faire passer une livraison.
 
 ## Sécurité, audit et instructions
@@ -87,6 +131,15 @@ spécifiques du projet restent applicables.
   le code ; fournir les preuves `fichier:ligne`, scénario ou mesure.
 - Appliquer l’AGORA du projet lorsqu’elle existe ; ne pas répondre à son propre
   bloc. Les constats de sécurité suivent le circuit prévu par le projet.
+- Champ de jeton, de clé ou de mot de passe (MD-LIB `collaboration.md` règle 69,
+  13/11/2026) : dans un vrai `<form autocomplete="on" action="#">`, avec un
+  identifiant fixe `name="username"` `autocomplete="username"` `readonly`
+  `tabindex="-1"` `aria-hidden="true"` sorti de l’écran par
+  `position:absolute;left:-9999px` (jamais `display:none`), le champ en
+  `type="password"` `name="password"` `autocomplete="current-password"` avec un
+  `id` unique, et un bouton `type="submit"` ; sur `submit`, `preventDefault()`,
+  même enregistrement qu’à la frappe et message de confirmation. Sinon Proton
+  Pass ne propose pas la clé.
 - Lire les instructions locales des dépôts de sauvegarde avant tout accès aux
   copies. Aucun export, déchiffrement ou changement de visibilité hors demande.
 - Garder les instructions courtes : fusionner les doublons, dater les hypothèses
