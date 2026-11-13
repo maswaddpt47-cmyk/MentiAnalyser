@@ -22,7 +22,7 @@
   Tests CI locaux : 36 + 28 + 27, 22 mutations sur 22. `AGENTS.md` complété
   depuis MD-LIB (autorisations, fin de tâche, Main toujours, tests, règle 69).
   Proton Pass confirmé par l'utilisateur le 13/11/2026. Aide-mémoire 💡 du mode
-  Quiz retiré (`d56b105`) : il décrivait publiquement la construction du mot de
+  Quiz retiré (`d56b105`, confirmé par l'utilisateur le 13/11/2026) : il décrivait publiquement la construction du mot de
   passe ; le texte reste dans l'historique Git, le mot de passe n'y figure pas.
 - Version `376a0ef` : la page GitHub Actions indique Success, test 15 s et
   deploy 15 s (durée totale 40 s) :
