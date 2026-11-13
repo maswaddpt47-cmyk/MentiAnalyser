@@ -99,9 +99,11 @@
   Amendements : propres textes conservés, réserves avant prose, date de
   génération, choix indépendant de deux questions au titre identique.
   Aucun débordement horizontal à 390 px et 1280 px.
-- Les CDN unpkg/cdnjs restent bloqués dans cette instance ; les tests
-  navigateur utilisent les mêmes versions publiques préchargées depuis
-  jsDelivr. Extraction IA réelle non validée.
+- Harnais navigateur (13/11/2026) : unpkg, cdnjs et jsDelivr refusés par le
+  proxy, et `fetch` de Node ne passe pas par lui. Prendre les mêmes versions
+  par `npm pack` (registre npm autorisé : react, react-dom, prop-types,
+  recharts, jszip, qrcodejs, pptxgenjs) et les servir à Playwright par
+  `page.route`. Extraction IA réelle non validée.
 - Rapport Claude et visualisations publiés : workflow du commit `d9feb3f`
   terminé avec WORKFLOW_RUN_CONCLUSION_SUCCESS (test et déploiement) :
   https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41499087705

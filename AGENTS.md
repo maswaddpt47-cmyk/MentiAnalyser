@@ -139,7 +139,9 @@ plateforme (le signaler une fois, puis continuer le reste).
   `type="password"` `name="password"` `autocomplete="current-password"` avec un
   `id` unique, et un bouton `type="submit"` ; sur `submit`, `preventDefault()`,
   même enregistrement qu’à la frappe et message de confirmation. Sinon Proton
-  Pass ne propose pas la clé.
+  Pass ne propose pas la clé. Bouton qui lance l’application : il devient le
+  `submit`, garde son libellé, et les `onkeydown` / `onclick` d’origine sont
+  retirés (sinon l’action part deux fois).
 - Lire les instructions locales des dépôts de sauvegarde avant tout accès aux
   copies. Aucun export, déchiffrement ou changement de visibilité hors demande.
 - Garder les instructions courtes : fusionner les doublons, dater les hypothèses
