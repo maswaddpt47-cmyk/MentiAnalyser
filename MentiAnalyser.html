@@ -1662,23 +1662,34 @@ function App() {
         // Mot de passe IA
         e('div', {style:{position:"relative"}},
           fieldLabel("🔑 Mot de passe IA"),
-          e('div', { style:{display:"flex", gap:6, alignItems:"center"} },
+          // Formulaire reconnu par les gestionnaires de mots de passe (MD-LIB collaboration.md règle 69).
+          e('form', {
+            autoComplete:"on", action:"#",
+            onSubmit: ev => {
+              ev.preventDefault();
+              verifyAndDecrypt(mdp).then(k => {
+                if (k) { setApiKey(k); setMdpStatus("ok"); }
+                else { setMdpStatus("error"); setApiKey(""); }
+              });
+            },
+            style:{display:"flex", gap:6, alignItems:"center"},
+          },
+            e('input', {
+              type:"text", name:"username", autoComplete:"username", value:"mentianalyser-ia",
+              readOnly:true, tabIndex:-1, "aria-hidden":"true",
+              style:{position:"absolute", left:"-9999px"},
+            }),
             e('input', {
               type: showMdp ? "text" : "password",
+              name:"password", id:"mdp-ia-quiz", autoComplete:"current-password",
+              "aria-label":"Mot de passe IA",
               value:mdp,
               onChange: ev => { setMdp(ev.target.value); setMdpStatus("idle"); setApiKey(""); },
-              onKeyDown: ev => {
-                if (ev.key === "Enter") {
-                  verifyAndDecrypt(ev.target.value).then(k => {
-                    if (k) { setApiKey(k); setMdpStatus("ok"); }
-                    else { setMdpStatus("error"); setApiKey(""); }
-                  });
-                }
-              },
               style:{...fieldStyle, minWidth:140, fontFamily:"monospace"},
               placeholder:"Mot de passe…",
             }),
             e('button', {
+              type:"button",
               onClick: () => setShowHint(s => !s),
               title: "Aide-mémoire",
               style:{
@@ -1697,6 +1708,7 @@ function App() {
               "\"Mon village natal + numéro de téléphone de mes parents (indicatif inclus)\""
             ),
             e('button', {
+              type:"button",
               onClick: () => setShowMdp(s => !s),
               title: showMdp ? "Masquer" : "Afficher",
               style:{
@@ -1706,17 +1718,15 @@ function App() {
               }
             }, showMdp ? "🙈" : "👁"),
             e('button', {
-              onClick: () => verifyAndDecrypt(mdp).then(k => {
-                if (k) { setApiKey(k); setMdpStatus("ok"); }
-                else { setMdpStatus("error"); setApiKey(""); }
-              }),
+              type:"submit",
+              title:"Enregistrer et vérifier le mot de passe IA",
               style:{
                 background: mdpStatus==="ok"?"#16a34a":mdpStatus==="error"?"#dc2626":"rgba(255,255,255,0.2)",
                 border:"none", borderRadius:7, color:"#fff",
                 padding:"5px 12px", fontWeight:700, fontSize:13, cursor:"pointer",
                 whiteSpace:"nowrap",
               }
-            }, mdpStatus==="ok" ? "✅ OK" : mdpStatus==="error" ? "❌" : "→")
+            }, mdpStatus==="ok" ? "✅ OK" : mdpStatus==="error" ? "❌ Incorrect" : "Enregistrer")
           )
         ),
       ),

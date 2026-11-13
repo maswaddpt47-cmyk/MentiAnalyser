@@ -88,6 +88,7 @@
     const [selecting,setSelecting] = React.useState(false);
     const fileInput = React.useRef(null);
     const [password,setPassword] = React.useState('');
+    const [passwordNote,setPasswordNote] = React.useState('');
     const [apiKey,setKey] = React.useState('');
     const [status,setStatus] = React.useState('idle');
     const [progress,setProgress] = React.useState(0);
@@ -253,7 +254,13 @@
             e('span',{style:{flex:'1 1 240px',minWidth:0,overflowWrap:'anywhere'}},file.name),
             e('button',{type:'button',style:btn,disabled:busy,'aria-label':`Retirer ${file.name}`,onClick:()=>removeFile(index)},'Retirer')))),
         e('p',{style:{fontSize:12,margin:'8px 0'}},'Un nouveau choix de fichiers remplace cette sélection. Retirer un fichier agit sur la prochaine analyse ; les réponses déjà extraites se retirent dans « Vérifier les réponses ».'),
-        field('Mot de passe IA (analyse et rapport Claude)',password,setPassword,'password',{autoComplete:'off',disabled:busy}),
+        // Formulaire reconnu par les gestionnaires de mots de passe (MD-LIB collaboration.md règle 69).
+        e('form',{autoComplete:'on',action:'#',onSubmit:ev=>{ev.preventDefault();setPassword(ev.currentTarget.elements.password.value);
+            setPasswordNote(apiKey?'Mot de passe IA déjà vérifié pour cette session.':'Mot de passe IA enregistré : il sera vérifié à la première analyse ou au premier rapport.');}},
+          e('input',{type:'text',name:'username',autoComplete:'username',value:'mentianalyser-ia',readOnly:true,tabIndex:-1,'aria-hidden':'true',style:{position:'absolute',left:'-9999px'}}),
+          field('Mot de passe IA (analyse et rapport Claude)',password,v=>{setPassword(v);setPasswordNote('');},'password',{name:'password',id:'mdp-ia-prevention',autoComplete:'current-password',disabled:busy}),
+          e('button',{type:'submit',style:{...btn,marginTop:8},disabled:busy},'Enregistrer le mot de passe IA'),
+          passwordNote && e('p',{role:'status',style:{fontSize:12,margin:'6px 0 0'}},passwordNote)),
         e('div',{style:{display:'flex',gap:10,flexWrap:'wrap',marginTop:12}},
           e('button',{style:btn,disabled:busy||!files.length,onClick:runAnalysis},status==='loading'?`Analyse ${progress}/${files.length}…`:'Analyser les captures'),
           e('button',{style:btn,disabled:busy,onClick:()=>{setAck(false);setDraft([...visible,{kind:'survey',id:Date.now(),q:'Nouvelle question',theme:'Usages des écrans',responseType:'unknown',respondents:null,options:[{label:'Réponse à compléter',count:null,percent:null}],sourceFile:'Saisie manuelle',note:''}]);}},'Ajouter une question manuellement')),
