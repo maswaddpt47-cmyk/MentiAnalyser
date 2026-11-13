@@ -1,13 +1,9 @@
 # CHANTIERS — MentiAnalyser
 
-État au **13/11/2026** (code `6b2e720`), règle 69 de MD-LIB appliquée (mot de passe IA reconnu par Proton Pass), workflow réussi. Avant : `376a0ef`, rapport récupérable et suggestions des quatre champs.
+État au **13/11/2026** (code `d56b105`), règle 69 appliquée et confirmée par l'utilisateur (Proton Pass propose le mot de passe IA), aide-mémoire 💡 retiré, workflow réussi. Avant : `376a0ef`, rapport récupérable et suggestions des quatre champs.
 
 ## En cours
 
-- Mot de passe IA (règle 69, `6b2e720`) : à confirmer par l'utilisateur que
-  Proton Pass propose la clé, sur ordinateur et sur téléphone (Android : réglage
-  « Saisie automatique via un autre service » sur Proton Pass). Les deux modes ont
-  un formulaire ; identifiant enregistré : `mentianalyser-ia`.
 - Faire essayer le nouveau parcours du rapport et les suggestions
   des actions / du suivi. Le signalement
   réel est une rédaction qui reste en cours ; la cause côté appel réel à Claude
@@ -25,6 +21,9 @@
   affichée (Quiz : vérification « ✅ OK / ❌ Incorrect » ; Prévention : message).
   Tests CI locaux : 36 + 28 + 27, 22 mutations sur 22. `AGENTS.md` complété
   depuis MD-LIB (autorisations, fin de tâche, Main toujours, tests, règle 69).
+  Proton Pass confirmé par l'utilisateur le 13/11/2026. Aide-mémoire 💡 du mode
+  Quiz retiré (`d56b105`) : il décrivait publiquement la construction du mot de
+  passe ; le texte reste dans l'historique Git, le mot de passe n'y figure pas.
 - Version `376a0ef` : la page GitHub Actions indique Success, test 15 s et
   deploy 15 s (durée totale 40 s) :
   https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/41646518549
