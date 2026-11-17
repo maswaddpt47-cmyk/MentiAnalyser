@@ -67,7 +67,8 @@ plateforme (le signaler une fois, puis continuer le reste).
 - Fin de tâche (04/11/2026) : vérifier que les opérations et revues nécessaires
   sont terminées, puis conclure le message final par une ligne distincte :
   **✅ TÂCHE TERMINÉE**. Si un traitement reste en cours ou bloque la livraison,
-  préciser son état sans annoncer la tâche terminée.
+  préciser son état sans annoncer la tâche terminée. La tâche est le travail
+  du message, même si l’objectif d’ensemble reste ouvert (13/11/2026).
 
 ## Décisions, preuves et périmètre
 
