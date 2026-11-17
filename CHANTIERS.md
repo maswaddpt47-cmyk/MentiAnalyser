@@ -1,14 +1,9 @@
 # CHANTIERS — MentiAnalyser
 
-État au **17/11/2026** (code `d56b105`, dernier commit `07db683`). « Pull » du 17/11 : aucun commit arrivé ici ; MD-LIB refondu par d'autres sessions (`a5c220f`), précision « Fin de tâche » reportée dans `AGENTS.md`. Avant : règle 69 confirmée par l'utilisateur (Proton Pass), aide-mémoire 💡 retiré.
+État au **17/11/2026** (code `d56b105`, base des consignes : commit de ménage du 17/11). Ménage de `CLAUDE.md` fait (ligne commune MD-LIB, copies retirées), synchronisation `git fetch` + `merge --ff-only` (règle 63), tableau des tests complété avec la CI ; annonce AGORA 🔴, rôles Claude/Codex dans les deux sens et relais « pull » alignés (`74eae2c`). Avant : règle 69 confirmée (Proton Pass), aide-mémoire 💡 retiré.
 
 ## En cours
 
-- Alignement sur MD-LIB, à décider par l'utilisateur (17/11/2026) : ménage de
-  `CLAUDE.md` (sa section 4 recopie des règles de `collaboration.md`, ligne
-  commune absente) ; annonce AGORA 🔴 « publié dans <owner/dépôt> → Dis « pull »
-  à … », rôle de contradicteur dans les deux sens et relais « pull » de Codex,
-  absents de `CLAUDE.md` et `AGENTS.md`.
 - Faire essayer le nouveau parcours du rapport et les suggestions
   des actions / du suivi. Le signalement
   réel est une rédaction qui reste en cours ; la cause côté appel réel à Claude
