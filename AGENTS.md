@@ -132,6 +132,10 @@ plateforme (le signaler une fois, puis continuer le reste).
   le code ; fournir les preuves `fichier:ligne`, scénario ou mesure.
 - Appliquer l’AGORA du projet lorsqu’elle existe ; ne pas répondre à son propre
   bloc. Les constats de sécurité suivent le circuit prévu par le projet.
+  Claude auteur → Codex relecteur ; Codex auteur → Claude relecteur
+  (MD-LIB `agora.md` §12). Annonce d’un bloc : « 🔴 ⚖️ AGORA : critère N —
+  <sujet>. Bloc AG-00N publié dans maswaddpt47-cmyk/MentiAnalyser. → Dis
+  « pull » à <Codex ou Claude>. »
 - Champ de jeton, de clé ou de mot de passe (MD-LIB `collaboration.md` règle 69,
   13/11/2026) : dans un vrai `<form autocomplete="on" action="#">`, avec un
   identifiant fixe `name="username"` `autocomplete="username"` `readonly`
@@ -147,6 +151,17 @@ plateforme (le signaler une fois, puis continuer le reste).
   copies. Aucun export, déchiffrement ou changement de visibilité hors demande.
 - Garder les instructions courtes : fusionner les doublons, dater les hypothèses
   et préférer un contrôle utile à une nouvelle couche de règles.
+
+## AGORA — ce que « pull » veut dire (03/11/2026)
+
+Après synchronisation, lire les blocs ouverts. Pour chaque bloc destiné à
+Codex et sans réponse Codex, vérifier auteur et indépendance selon `agora.md`,
+puis répondre avec preuves sous `### Réponse — Codex — JJ/MM/AAAA`.
+N'écrire que dans `AGORA.md`, committer et publier selon le projet ; une réponse
+ne change pas le code et n'autorise rien : l'utilisateur tranche.
+Ne jamais répondre à un bloc ouvert par Codex lui-même. Aucun bloc en attente :
+le dire en une ligne et s'arrêter, sauf autre demande. Le relais entre comptes
+passe par l'utilisateur et le dépôt ; aucune conversation directe n'est supposée.
 
 ## Sources communes
 

@@ -10,8 +10,12 @@ format de stockage, coût irréversible, contradiction d'une note, troisième
 itération sans résolution, abandon d'un existant inexpliqué ou choix non arbitré.
 Soumettre d'office sans bloquer ; le relais est humain et la décision revient
 à l'utilisateur. Rendu pur et correctif réversible sans calcul : pas de bloc.
-Sécurité et chiffres : contradicteur indépendant ; l'IA qui écrit ne se relit
-pas. Règles complètes : `MD-LIB/agora.md` (non requis pour répondre au bloc).
+Sécurité et chiffres : relecteur d'un autre éditeur, dans les deux sens (Claude
+auteur → Codex ; Codex auteur → Claude, `agora.md` §12) ; l'IA qui écrit ne se
+relit pas. Annonce en tête de message, sur une ligne distincte :
+« 🔴 ⚖️ AGORA : critère N — <sujet>. Bloc AG-00N publié dans
+maswaddpt47-cmyk/MentiAnalyser. → Dis « pull » à <Codex ou Claude>. »
+Règles complètes : `MD-LIB/agora.md` (non requis pour répondre au bloc).
 
 ---
 
