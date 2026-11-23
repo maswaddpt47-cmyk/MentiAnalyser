@@ -77,11 +77,12 @@
         ])]
     };
   }
+  const newSession = version => ({version,meta:{title:'Usages des écrans et besoins de prévention',school:'',group:'',date:'',facilitator:'',classSize:null,objective:'',conditions:'',actions:'',followup:''},questions:[]});
   window.PreventionApp = function PreventionApp({analyse, unlock}) {
     const e = React.createElement, P = Prevention;
     const [data, setData] = React.useState(() => {
       try { return P.validateSession(JSON.parse(localStorage.getItem('menti_prevention_v1'))); }
-      catch { return {version:P.VERSION,meta:{title:'Usages des écrans et besoins de prévention',school:'',group:'',date:'',facilitator:'',classSize:null,objective:'',conditions:'',actions:'',followup:''},questions:[]}; }
+      catch { return newSession(P.VERSION); }
     });
     const [draft, setDraft] = React.useState(null);
     const [files,setFiles] = React.useState([]);
@@ -100,6 +101,7 @@
     const reportURL = React.useRef(null);
     const [ack,setAck] = React.useState(false);
     const [generating,setGenerating] = React.useState(false);
+    const [sourcesPending,setSourcesPending] = React.useState(false);
     const busy = status === 'loading' || generating || selecting;
     const latest=React.useRef(data);latest.current=data;
     React.useEffect(()=>{
@@ -158,15 +160,31 @@
       if(!key)throw new Error('Mot de passe IA incorrect ou manquant.');
       setKey(key);setPassword('');return key;
     }
+    function clearReport() {
+      if(reportURL.current)URL.revokeObjectURL(reportURL.current);
+      reportURL.current=null;
+      setReport(null);setReportMessage('');
+    }
+    function replaceSession(session, notice) {
+      clearReport();
+      setData(session);setDraft(null);setFiles([]);setSourcesPending(false);
+      setAck(false);setErrors([]);setRetry(null);setProgress(0);setStatus('idle');
+      setMessage(notice);
+    }
+    function startNewSession() {
+      if(busy)return;
+      if(!confirm('Commencer un nouveau questionnaire ? Le travail courant sera remplacé. Annule et sauvegarde le JSON si tu veux le conserver.'))return;
+      replaceSession(newSession(P.VERSION),'Nouveau questionnaire. Renseigne le contexte et importe les résultats du nouvel atelier.');
+    }
     async function exportReport(format, force=false) {
       const withClaude = format === 'claude';
       if(busy)return;
+      if(sourcesPending){setReportMessage('Analyse les nouveaux fichiers à l’étape 2 avant de générer le rapport.');return;}
       if(draft!==null){setReportMessage('Vérifie puis applique les réponses avant de générer le rapport.');return;}
       if(!data.questions.length){setReportMessage('Ajoute ou importe les résultats du questionnaire.');return;}
       if(!meta.group.trim() || !Number(meta.classSize)){setReportMessage('Renseigne la classe et son effectif avant de générer le rapport.');return;}
       if(!ack){setReportMessage('Relis les réponses et les points à clarifier, puis coche la confirmation.');return;}
-      setGenerating(true);setReport(null);setReportMessage('Préparation du rapport…');
-      if(reportURL.current){URL.revokeObjectURL(reportURL.current);reportURL.current=null;}
+      setGenerating(true);clearReport();setReportMessage('Préparation du rapport…');
       try {
         let snapshot=P.validateSession(data);
         if(withClaude && (force || !P.hasCurrentSynthesis(snapshot))) {
@@ -207,7 +225,8 @@
             if(hasImages && entries.some(x=>/\.pdf$/i.test(x.name)))setMessage('Les captures du ZIP sont retenues ; le PDF est écarté pour éviter de réanalyser un rapport déjà généré.');
           } else if(/\.(png|jpe?g|pdf)$/i.test(f.name)) all.push(f);
         }
-        setFiles(all);setErrors([]);setStatus('idle');setProgress(0);setRetry(null);
+        if(all.length)clearReport();
+        setFiles(all);setSourcesPending(all.length>0);setErrors([]);setStatus('idle');setProgress(0);setRetry(null);
         if(!all.length)setMessage('Aucun fichier PNG, JPEG ou PDF utilisable dans cette sélection.');
       } catch(err){setMessage('Impossible de lire les fichiers : '+err.message);}
       finally {setSelecting(false);}
@@ -215,6 +234,7 @@
     function removeFile(index) {
       if(busy)return;
       setFiles(current=>index===null?[]:current.filter((_,i)=>i!==index));
+      if(index===null || files.length===1)setSourcesPending(false);
       setErrors([]);setStatus('idle');setProgress(0);setRetry(null);setAck(false);
       setMessage(data.questions.length || draft!==null
         ? 'Sélection mise à jour. Les réponses déjà extraites sont conservées ; retire-les dans « Vérifier les réponses » si nécessaire.'
@@ -225,18 +245,19 @@
       setStatus('loading');setProgress(0);setRetry(null);
       try {
         const key=await getKey();setMessage('');setAck(false);
-        await analyse(files,key,setStatus,setProgress,setRetry,results=>setDraft(results),setErrors,()=>{},'', 'prevention');
+        await analyse(files,key,setStatus,setProgress,setRetry,results=>{setDraft(results);if(results.length)setSourcesPending(false);},setErrors,()=>{},'', 'prevention');
       } catch(err){setStatus('idle');setMessage(err.message);}
     }
     let normalized;
     try {normalized=P.validateSession(data);}catch {normalized=null;}
     const noDraft = draft === null;
-    const currentReport=noDraft && normalized && report?.fingerprint===JSON.stringify(normalized) ? report : null;
+    const currentReport=!sourcesPending && noDraft && normalized && report?.fingerprint===JSON.stringify(normalized) ? report : null;
     return e('main',{style:{maxWidth:1050,margin:'0 auto',padding:'20px 16px',overflowWrap:'anywhere'}},
       e('h1',{style:{fontSize:24,color:'#197d89',marginBottom:8}},'Usages des écrans et prévention'),
       e('p',{style:{marginBottom:16}},'Un bilan des pratiques déclarées et des besoins d’accompagnement, destiné à l’équipe éducative. Les résultats sont conservés dans ce navigateur ; exporte le JSON pour les transférer.'),
       e('style',null,'.prevention-charts .chart-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);align-items:center;gap:10px;margin:10px 0}.prevention-charts .bar-track{background:#edf2f5;border-radius:5px;min-height:14px}.prevention-charts .bar-fill{height:14px;background:#4389bd;border-radius:5px}.prevention-charts article{margin:18px 0}.prevention-charts ol{padding-left:24px}.prevention-charts .source{font-size:12px;color:#475569}.prevention-charts h2{font-size:18px}.prevention-charts h3{font-size:15px}'),
       data.synthesis && normalized && !P.hasCurrentSynthesis(normalized) && e('p',{role:'status',style:card},'Les données ont changé : la synthèse Claude doit être régénérée.'),
+      e('button',{type:'button',style:{...btn,marginBottom:12},disabled:busy,onClick:startNewSession},'Nouveau questionnaire'),
       message && e('p',{role:'status',style:{...card,background:'#fff7df'}},message),
       e('section',{style:card},e('h2',{style:{fontSize:18,marginBottom:12}},'1. Contexte du rapport'),
         e('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,240px),1fr))',gap:12}},
@@ -258,6 +279,7 @@
           e('button',{type:'button',style:btn,disabled:busy,onClick:()=>fileInput.current?.click()},selecting?'Ouverture des fichiers…':'Choisir des fichiers'),
           files.length>0 && e('button',{type:'button',style:btn,disabled:busy,onClick:()=>removeFile(null)},'Tout retirer')),
         e('p',{'aria-live':'polite'},`${files.length} fichier(s) source(s) sélectionné(s).`),
+        sourcesPending && e('p',{role:'status'},'Analyse les nouveaux fichiers, puis applique les réponses vérifiées pour créer le nouveau rapport.'),
         files.length>0 && e('ul',{'aria-label':'Fichiers sélectionnés pour l’analyse',style:{listStyle:'none',padding:0,margin:'10px 0'}},
           ...files.map((file,index)=>e('li',{key:`${file.name}-${index}`,style:{display:'flex',alignItems:'center',flexWrap:'wrap',gap:8,padding:'8px 0',borderBottom:'1px solid #d9e3e9'}},
             e('span',{style:{flex:'1 1 240px',minWidth:0,overflowWrap:'anywhere'}},file.name),
@@ -329,7 +351,7 @@
           e('label',{style:btn},'Ouvrir un JSON prévention',e('input',{type:'file',accept:'.json',disabled:busy,'aria-label':'Ouvrir un JSON prévention',style:{display:'block',maxWidth:220},onChange:async ev=>{
             try{const file=ev.target.files[0];if(!file)return;const restored=P.validateSession(JSON.parse(await file.text()));
               if((data.questions.length||draft!==null)&&!confirm('Remplacer le questionnaire courant ? Exporte-le auparavant si nécessaire.'))return;
-              setData(restored);setDraft(null);setAck(false);setFiles([]);setErrors([]);setMessage('Questionnaire restauré ; vérifie-le avant diffusion.');
+              replaceSession(restored,'Questionnaire restauré. Vérifie-le avant diffusion.');
             }catch(err){setMessage(err.message);}finally{ev.target.value='';}
           }}))),
         currentReport && e('aside',{style:{marginTop:12,padding:12,background:'#edf6f8',borderRadius:8}},
