@@ -16,6 +16,7 @@
 
 ## État vérifié
 
+- Mode Prévention : formulaire du mot de passe IA déplacé au-dessus des boutons de rapport. L’étape d’import renvoie au même champ pour l’analyse des captures.
 - Le rapport Claude exige à la génération des références issues des réponses courantes grâce au format structuré de l’API. Validation locale conservée. Vérifié sur réponses API simulées.
 - Synthèse Claude : le texte demandé décrit les tendances en mots, les appuis du rapport affichent les chiffres exacts. Le contrôle des nombres est conservé. En cas de rejet, le message indique le rapport descriptif.
 - Étape 3 du mode Prévention : vérifications regroupées par question et rappel de confidentialité unique. Le caractère facultatif des cases de synthèse est explicite. Rendu vérifié sur des réponses fictives et suite CI passée sous Node 20.
