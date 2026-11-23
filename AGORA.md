@@ -277,3 +277,14 @@ des invariants du rapport. Le compte rendu de Claude est conservé intégralemen
 AG-001 : amendé par Claude ; amendements acceptés par l'utilisateur et appliqués.
 AG-002 : amendé par Claude ; corrections demandées par l'utilisateur et appliquées.
 Confirmé : 0 ; amendé : 2 ; contredit : 0.
+
+## AG-003 — Sélection des constats du bilan direction — 23/11/2026
+
+**Auteur** : Codex — base `addcc61`.
+**Demande** : appliquer à l’application l’aperçu d’un bilan court pour la direction et conserver le détail à part.
+**Critère 7** : choix des résultats présentés sur une nouvelle sortie imprimable.
+**Proposition** : reprendre au plus deux réponses retenues et cohérentes. Si aucune réponse n’est cochée, proposer les réponses les plus fréquentes de deux questions distinctes dont la base et les effectifs sont vérifiables. L’aperçu reste soumis à la relecture de l’animateur. Les calculs, données stockées et rapports détaillés restent disponibles.
+**Contradicteur** : Claude, session indépendante.
+**Ce que cela engage** : ordre et choix des constats dans le bilan court.
+**Si personne ne répond** : la sortie supplémentaire, réversible et demandée par l’utilisateur, peut être essayée sur données fictives et publiée après tests. L’utilisateur garde la décision éditoriale.
+**Où regarder** : `prevention.js`, `prevention-ui.js`.
