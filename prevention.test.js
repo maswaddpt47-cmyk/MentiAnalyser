@@ -257,6 +257,18 @@ test('les nombres inventés sont refusés dans toutes les sections, y compris av
   assert.ok(await P.generateSynthesis(aiSession(),'sk-test-fixture',mockBody(body)));
 });
 
+test('un suivi Claude vide ne bloque pas le rapport et le suivi de l’animateur reste visible',async()=>{
+  const data=P.validateSession({...aiSession(),meta:{...aiSession().meta,followup:'Revoir les repères avec le groupe.'}});
+  for(const suivi of ['', '   ']) {
+    const synthesis=await P.generateSynthesis(data,'sk-test-fixture',mockBody({...synthesisBody(),suivi}));
+    const html=P.reportHTML({...data,synthesis});
+    assert.doesNotMatch(html,/<h3>Suivi proposé<\/h3>/);
+    assert.match(html,/Suivi proposé par l’animateur/);
+    assert.match(html,/Revoir les repères avec le groupe/);
+  }
+  await assert.rejects(()=>P.generateSynthesis(data,'sk-test-fixture',mockBody({...synthesisBody(),suivi:'x'.repeat(12001)})),/trop longue : suivi/);
+});
+
 test('les assertions de diagnostic et de causalité du contre-exemple sont refusées',async()=>{
   for(const phrase of ['Les élèves sont addicts.','Les écrans causent leur fatigue.','Ils jouent le soir, ce qui cause leur fatigue.','La maîtrise des élèves est parfaite.']) {
     const body=synthesisBody();body.conclusion=phrase;

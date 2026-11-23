@@ -16,6 +16,7 @@
 
 ## État vérifié
 
+- Régénération Claude : le suivi proposé est demandé même si l’animateur laisse le champ vide. Une réponse sans suivi reste exportable, avec les autres sections et le suivi éventuel de l’animateur. Cas couvert sur réponse simulée.
 - Bilan direction : les notes de préparation sont consultables dans l’application, près du rapport généré. Le PDF est réservé au bilan et aux graphiques.
 - Bilan direction (AG-003) : synthèse courte puis graphiques et radar des questions cohérentes. Résultats cochés prioritaires, sélection automatique si aucun résultat exploitable n’est coché. Rapports détaillés à part. Parcours du bouton vérifié sur données fictives et suite CI sous Node 20.
 - Mode Prévention : formulaire du mot de passe IA déplacé au-dessus des boutons de rapport. L’étape d’import renvoie au même champ pour l’analyse des captures.
