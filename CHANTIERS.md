@@ -16,6 +16,7 @@
 
 ## État vérifié
 
+- Étape 3 du mode Prévention : vérifications regroupées par question et rappel de confidentialité unique. Le caractère facultatif des cases de synthèse est explicite. Rendu vérifié sur des réponses fictives et suite CI passée sous Node 20.
 - Règle 69 (`6b2e720`) : Chromium 390/1280 px, sans erreur JS ; champs en
   formulaire, identifiant hors écran, Entrée sans rechargement, confirmation
   affichée (Quiz : vérification « ✅ OK / ❌ Incorrect » ; Prévention : message).

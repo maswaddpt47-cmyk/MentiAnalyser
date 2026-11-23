@@ -136,9 +136,17 @@
             e('button',{type:'button',style:btn,disabled:busy||added,'aria-label':`${added?'Suggestion ajoutée':'Ajouter la suggestion'} : ${title}`,onClick:()=>addSuggestion(key,text)},added?'Ajoutée':'Ajouter'));
         })));
     const update = (index,patch) => {setAck(false);setDraft(visible.map((q,i)=>i===index?{...q,...patch}:q));};
-    const warningRows = visible.flatMap(q=>{
-      try {return P.warnings(P.normalizeQuestion(q),Number(meta.classSize)||null).map(w=>`${q.q} — ${w}`);}
-      catch(err){return [`${q.q} — ${err.message}`];}
+    let hasPrivacyReminder = false;
+    const questionsToCheck = visible.flatMap((q,index)=>{
+      let warnings;
+      try {warnings = P.warnings(P.normalizeQuestion(q),Number(meta.classSize)||null);}
+      catch(err){warnings = [err.message];}
+      const checks = warnings.filter(warning=>{
+        if(!warning.includes(' : confidentialité — faible effectif ('))return true;
+        hasPrivacyReminder = true;
+        return false;
+      });
+      return checks.length ? [{index,title:q.q,checks}] : [];
     });
     function download(content,name,type) {
       const url=URL.createObjectURL(new Blob([content],{type}));
@@ -267,7 +275,7 @@
         retry && e('p',null,retry),
         errors.length>0 && e('div',{role:'alert'},e('p',null,`${errors.length} fichier(s) ou question(s) non restitué(s) : vérifier avant diffusion.`),...errors.map((x,i)=>e('p',{key:i},`${x.file} : ${x.motif}`)))),
       e('section',{style:card},e('h2',{style:{fontSize:18}},'3. Vérifier les réponses'),
-        e('p',null,`${visible.length} question(s). Recopie les effectifs et pourcentages visibles ; laisse les inconnus vides. Le nombre de répondants se vérifie pour chaque question, indépendamment de l’effectif de classe. Coche « Retenir dans la synthèse » pour les constats à présenter en première partie du rapport.`),
+        e('p',null,`${visible.length} question(s). Recopie les effectifs et pourcentages visibles ; laisse les inconnus vides. Le nombre de répondants se vérifie pour chaque question, indépendamment de l’effectif de classe. La case « Retenir dans la synthèse » est facultative. Elle met la réponse en avant dans le rapport.`),
         ...visible.map((q,i)=>e('article',{key:i,style:{borderTop:'1px solid #ccd9df',marginTop:16,paddingTop:12}},
           field(`Question ${i+1}`,q.q,v=>update(i,{q:v})),
           e('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,220px),1fr))',gap:10,marginTop:8}},
@@ -284,7 +292,13 @@
             e('button',{style:btn,onClick:()=>update(i,{options:[...q.options,{label:'Nouvelle réponse',count:null,percent:null}]})},'Ajouter une réponse'),
             e('button',{style:btn,onClick:()=>{setAck(false);setDraft(visible.filter((_,k)=>i!==k));}},'Retirer la question')),
           field('Observation / ambiguïté à signaler',q.note,v=>update(i,{note:v})),e('p',{style:{fontSize:12}},`Source : ${q.sourceFile||'Saisie manuelle'}`))),
-        warningRows.length>0 && e('aside',{style:{background:'#fff7df',padding:12,marginTop:12}},e('strong',null,'Points à clarifier'),e('ul',{style:{paddingLeft:20}},...warningRows.map((w,i)=>e('li',{key:i},w)))),
+        questionsToCheck.length>0 && e('aside',{style:{background:'#fff7df',padding:12,marginTop:12}},
+          e('strong',null,'À vérifier avec les captures Mentimeter'),
+          ...questionsToCheck.map(({index,title,checks})=>e('div',{key:index,style:{marginTop:8}},
+            e('strong',null,`Question ${index+1} — ${title}`),
+            e('ul',{style:{paddingLeft:20,margin:'4px 0'}},...checks.map((check,i)=>e('li',{key:i},check)))))),
+        hasPrivacyReminder && e('p',{style:{fontSize:13,marginTop:12}},
+          'Confidentialité avant partage. Garde les chiffres et évite tout détail permettant d’identifier un élève.'),
         !noDraft && e('button',{style:{...btn,marginTop:12},disabled:busy,onClick:()=>{
           try{const questions=visible.map(q=>P.normalizeQuestion(q));setData(d=>({...d,questions}));setDraft(null);setAck(false);setMessage('Réponses appliquées. Relis les points à clarifier avant le rapport.');}
           catch(err){setMessage(err.message);}
