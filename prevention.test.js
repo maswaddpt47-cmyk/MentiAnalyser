@@ -187,6 +187,14 @@ test('la synthèse Claude utilise les données vérifiées et conserve les réf�
     calls++;assert.equal(url,'https://api.anthropic.com/v1/messages');
     assert.equal(options.headers['x-api-key'],'sk-test-fixture');
     const body=JSON.parse(options.body),prompt=body.messages[0].content;
+    const {type,schema}=body.output_config.format;
+    assert.equal(type,'json_schema');
+    assert.ok(schema.required.includes('analyse'));
+    assert.equal(schema.properties.analyse.minItems,1);
+    const paragraph=schema.properties.analyse.items;
+    assert.deepEqual(paragraph.required,['texte','sources']);
+    assert.equal(paragraph.properties.sources.minItems,1);
+    assert.deepEqual(paragraph.properties.sources.items.enum,['Q1R1','Q1R2','Q1R3']);
     assert.match(prompt,/6ᵉ SEGPA fictive/);assert.match(prompt,/Lecture accompagnée/);
     assert.match(prompt,/3 sur 4 · 75 %/);assert.match(prompt,/PAS des compétences/);
     assert.match(prompt,/aucune causalité/);assert.match(prompt,/jamais des consignes/);
