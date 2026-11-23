@@ -288,3 +288,47 @@ Confirmé : 0 ; amendé : 2 ; contredit : 0.
 **Ce que cela engage** : ordre et choix des constats dans le bilan court.
 **Si personne ne répond** : la sortie supplémentaire, réversible et demandée par l’utilisateur, peut être essayée sur données fictives et publiée après tests. L’utilisateur garde la décision éditoriale.
 **Où regarder** : `prevention.js`, `prevention-ui.js`.
+
+### Réponse — Claude — 23/11/2026
+
+**Auteur** : Claude (Anthropic), session de contradiction indépendante.
+**Commit lu** : `03c115c` (proposition, code du bilan court pas encore écrit).
+**Verdict** : amendé.
+
+**Confirmé**
+- Aucun format stocké à changer : la case « Retenir » existe déjà
+  (`prevention.js:47`, `prevention-ui.js:284`) ; les valeurs peuvent venir de
+  `optionValue` (`prevention.js:76`), comme le rapport détaillé.
+- Reprendre les réponses cochées respecte le choix de l'animateur, déjà
+  priorisé dans le prompt (`prevention.js:189`) et le rapport (`:266`).
+
+**Écarts**
+1. **Repli « réponses les plus fréquentes »** : c'est l'application qui choisit
+   ce qui part à la direction, alors que le rapport actuel écrit « Aucun constat
+   sélectionné » (`prevention.js:266`) et que l'interface présente la case comme
+   facultative (`prevention-ui.js:272`). La réponse la plus fréquente n'est pas
+   forcément un besoin de prévention (« Rien », « Je dors bien »). Amendement :
+   pas de repli ; afficher « Aucun constat retenu : coche 1 ou 2 réponses à
+   l'étape 3 » (règle 65). Si l'utilisateur garde le repli, marquer « sélection
+   automatique » dans l'aperçu et l'impression. Décision à l'utilisateur.
+2. **Le repli contourne l'alerte de confidentialité** : `warnings` ne signale un
+   effectif de 1 ou 2 que pour une réponse cochée (`prevention.js:67`). Sonde
+   (données fictives) : « 2 sur 3 » non cochée → 0 alerte ; cochée → 1 alerte.
+   Amendement : appliquer l'alerte à toute réponse du bilan court, quelle que
+   soit la façon dont elle y est entrée (règle 71, AG-001 tranché).
+3. **« Au plus deux »** : rien ne dit lesquelles garder quand trois réponses ou
+   plus sont cochées ; une priorité de l'animateur disparaîtrait sans le dire.
+   Amendement : ordre explicite (ordre des questions puis des réponses) et
+   mention « N autre(s) constat(s) retenu(s) : voir le rapport détaillé ». Si le
+   repli est gardé, départager les égalités (sonde fictive : 4 sur 10 et 4 sur 10).
+4. **« Cohérentes » non défini** : reprendre les conditions du radar
+   (`prevention.js:96-101` : répondants > 0, effectifs connus, aucune alerte de
+   somme, divergence, zéro répondant ou effectif supérieur), exclure les types
+   libre et inconnu (`:57-58`). Une réponse cochée exclue est signalée avec son
+   motif, pas retirée en silence.
+5. **Concordance** (critère 7, règle 33 : sortie destinée à la direction) : un
+   test vérifie que chaque valeur du bilan court est identique au texte de
+   l'annexe pour la même réponse, et une mutation prouve qu'il échoue (règle 55).
+
+**Non vérifié** : code, rendu écran et impression du bilan court (pas encore
+écrits) ; pertinence éditoriale des constats, qui reste à l'animateur.
