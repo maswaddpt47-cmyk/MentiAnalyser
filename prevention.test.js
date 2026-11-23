@@ -349,13 +349,13 @@ test('le bilan direction sépare les constats courts des graphiques et écarte l
     q({q:'Chiffres incohérents',options:[{label:'À écarter',count:4,percent:25}]}),
     q({q:'Base inconnue',respondents:null,options:[{label:'Proportion seule',percent:80}]})
   ]};
-  const html=P.directionReportHTML(data);
+  const {html,notes}=P.directionReport(data);
   const [summary,graphs]=html.split('</main>');
   assert.match(summary,/<strong>3 sur 4 · 75 %<\/strong> — Durée élevée/);
   assert.match(summary,/<strong>2 sur 4 · 50 %<\/strong> — Sans pause/);
-  assert.match(summary,/Points à vérifier/);
-  assert.match(summary,/Constats suggérés automatiquement/);
-  assert.match(summary,/Confidentialité/);
+  assert.doesNotMatch(html,/Points à vérifier|Constats suggérés automatiquement|Confidentialité|Source\. Réponses déclarées|Autres constats retenus/);
+  assert.match(notes.join(" "),/restent à vérifier.*|Constats suggérés automatiquement/);
+  assert.match(notes.join(" "),/Confidentialité/);
   const detail = P.reportHTML(data);
   assert.match(detail,/<td>Durée élevée<\/td><td>3 sur 4 · 75 %<\/td>/);
   assert.match(detail,/<td>Sans pause<\/td><td>2 sur 4 · 50 %<\/td>/);
@@ -366,11 +366,11 @@ test('le bilan direction sépare les constats courts des graphiques et écarte l
   assert.match(graphs,/data-radar-values="50,25,25"/);
   assert.doesNotMatch(graphs,/Chiffres incohérents|Base inconnue|Annexe/);
   data.questions[1].options[1].highlight=true;
-  const chosen=P.directionReportHTML(data).split('</main>')[0];
+  const chosen=P.directionReport(data).html.split('</main>')[0];
   assert.match(chosen,/<strong>1 sur 4 · 25 %<\/strong> — Avec pause/);
   assert.doesNotMatch(chosen,/Durée élevée|Sans pause|suggérés automatiquement/);
   data.questions[2].options[0].highlight=true;
-  assert.match(P.directionReportHTML(data),/Certains constats cochés sont concernés/);
+  assert.match(P.directionReport(data).notes.join(" "),/Certains constats cochés sont concernés/);
   data.questions[0].options.forEach(option=>{option.highlight=true;});
-  assert.match(P.directionReportHTML(data),/Autres constats retenus dans le rapport détaillé[^:]*: 1/);
+  assert.match(P.directionReport(data).notes.join(" "),/Autres constats retenus dans le rapport détaillé[^:]*: 1/);
 });

@@ -247,7 +247,7 @@ DONNEES VERIFIEES :\n${JSON.stringify(payload)}`;
     return normalized;
   }
   const reportStyles = `body{font:15px/1.5 Verdana,sans-serif;color:#243746;max-width:920px;margin:30px auto;padding:0 20px}h1{font-size:24px;color:#197d89}h2{font-size:18px;color:#197d89}h3{font-size:15px}section{margin:22px 0}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{padding:7px;border:1px solid #ccd9df;text-align:left;overflow-wrap:anywhere}th{background:#edf6f8}p,li{overflow-wrap:anywhere}.chart-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);align-items:center;gap:10px;margin:10px 0}.bar-track{background:#edf2f5;border-radius:5px;min-height:14px}.bar-fill{height:14px;background:#4389bd;border-radius:5px}.charts ol{padding-left:24px}.question{break-inside:avoid;margin:18px 0}.source{font-size:11px;color:#536675}.notice{padding:12px;background:#fff7df}button{padding:10px}@media print{button{display:none}body{margin:0;max-width:none;font-size:11px}h1{font-size:20px}h2{font-size:15px}@page{size:A4;margin:15mm}}`;
-  function directionReportHTML(data) {
+  function directionReport(data) {
     const session = validateSession(data);
     const {meta, questions} = session;
     const eligible = questions.filter(q => q.respondents > 0 && q.options.every(o => o.count !== null) &&
@@ -264,7 +264,14 @@ DONNEES VERIFIEES :\n${JSON.stringify(payload)}`;
     const classSize = meta.classSize > 0 ? `Effectif de la classe : ${meta.classSize}` : '';
     const context = [meta.school,meta.group,date,classSize].filter(Boolean).map(esc).join(' · ');
     const paragraphs = (heading,value) => value ? `<section><h2>${heading}</h2><p>${esc(value).replace(/\n/g,'<br>')}</p></section>` : '';
-    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title} — Bilan pour la direction</title>
+    const notes = [
+      !numberChecked && lines.length ? 'Constats suggérés automatiquement selon la fréquence des réponses. Pour en choisir d’autres, coche les réponses à l’étape 3.' : '',
+      selected.length > findings.length ? `Les deux premières réponses cochées sont présentées dans l’ordre du questionnaire. Autres constats retenus dans le rapport détaillé : ${selected.length - findings.length}.` : '',
+      candidates.some(({option}) => option.count === 1 || option.count === 2) ? 'Confidentialité. Certaines réponses concernent très peu d’élèves. Évite tout détail permettant de les identifier.' : '',
+      eligible.length < questions.length ? 'Les questions dont les effectifs sont incomplets ou incohérents restent à vérifier à l’étape 3.' : '',
+      numberChecked > selected.length ? 'Certains constats cochés sont concernés. Vérifie leur question avant de les reprendre.' : ''
+    ].filter(Boolean);
+    const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title} — Bilan pour la direction</title>
 <style>${reportStyles}
 .bilan h1{font-size:34px;line-height:1.15;margin:.35em 0;color:#243746}.bilan small{display:block;color:#536675;line-height:1.4}.findings{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px}.findings li{background:#edf6f8;border:1px solid #ccd9df;padding:12px;break-inside:avoid}.findings strong{display:block;font-size:21px;color:#17636a}.chart-row{break-inside:avoid}
 @media print{.bilan + .charts{break-before:page}.bilan h1{font-size:26px}.findings{grid-template-columns:repeat(2,minmax(0,1fr))}.bilan section{break-inside:avoid}*{print-color-adjust:exact}}
@@ -274,16 +281,13 @@ DONNEES VERIFIEES :\n${JSON.stringify(payload)}`;
 ${paragraphs('Objectif de l’atelier',meta.objective)}
 <section><h2>Ce qui ressort</h2>
 ${lines.length ? `<ul class="findings">${lines.join('')}</ul>` : '<p>Aucun résultat chiffré suffisamment renseigné pour ce bilan.</p>'}
-${!numberChecked && lines.length ? '<p class="source">Constats suggérés automatiquement selon la fréquence des réponses. Pour en choisir d’autres, coche les réponses à l’étape 3.</p>' : ''}
-${selected.length > findings.length ? `<p class="source">Les deux premières réponses cochées sont présentées dans l’ordre du questionnaire. Autres constats retenus dans le rapport détaillé : ${selected.length - findings.length}.</p>` : ''}
-${candidates.some(({option}) => option.count === 1 || option.count === 2) ? '<p class="source">Confidentialité. Certaines réponses concernent très peu d’élèves. Évite tout détail permettant de les identifier.</p>' : ''}
-<p class="source">Source. Réponses déclarées au questionnaire de l’atelier. La base est indiquée pour chaque résultat.</p></section>
+</section>
 ${paragraphs('Action proposée',meta.actions)}
 ${paragraphs('Suivi proposé',meta.followup)}
-${eligible.length < questions.length ? '<section><h2>Points à vérifier</h2><p>Des questions dont les effectifs sont incomplets, incohérents ou ambigus restent à vérifier dans le rapport détaillé.</p>' + (numberChecked > selected.length ? '<p>Certains constats cochés sont concernés. Vérifie leur question avant de les reprendre.</p>' : '') + '</section>' : ''}
 </main>
 ${eligible.length ? chartsHTML({...session,questions:eligible}) : ''}
 </body></html>`;
+    return {html,notes};
   }
   function reportHTML(data) {
     const normalized=validateSession(data);
@@ -314,5 +318,5 @@ ${qs.map(q => `<article class="question"><h3>${esc(q.q)}</h3><p>${esc(q.theme)} 
 Extrais TOUTES les questions visibles, y compris habitudes, effets ressentis, équipement et réponses libres. Réponds seulement avec un tableau JSON :
 [{"q":"intitulé exact","theme":"thème descriptif pertinent","responseType":"single|multiple|free|unknown","respondents":5,"options":[{"label":"libellé exact","count":3,"percent":null}],"note":"ambiguïté éventuelle"}]
 Pour responseType, choisis exactement une valeur parmi single, multiple, free, unknown. Les nombres de cet exemple sont fictifs. Recopie seulement les valeurs visibles. Si une information manque, mets null (jamais 0 inventé). respondents = nombre de répondants explicitement visible, PAS somme des sélections, des contributions ou des pourcentages. Une icône 5/5 indique 5 répondants. count = effectif affiché ; percent = pourcentage affiché. Un 80% n'est jamais un effectif 80. Garde les options à zéro. Pour les nuages de mots, conserve les mots, type free ; ne renseigne count que si une fréquence numérique est explicitement affichée, sinon null. Ne déduis jamais une fréquence de la taille des mots et ne calcule aucune moyenne. Les couleurs de barres ne signifient pas bonne réponse. N'invente ni score, ni compétence, ni diagnostic. N'interprète pas l'absence de difficulté comme une bonne réponse. Ne reprends pas les notes d'un rapport déjà généré. Si aucun résultat source exploitable, réponds [].`;
-  return {VERSION, normalizeQuestion, collectQuestions, warnings, optionValue, optionPercent, chartData, radarCandidates, radarSelection, selectedRadar, radarSVG, chartsHTML, observations, synthesisSource, hasCurrentSynthesis, synthesisPrompt, generateSynthesis, synthesisHTML, validateSession, directionReportHTML, reportHTML, prompt};
+  return {VERSION, normalizeQuestion, collectQuestions, warnings, optionValue, optionPercent, chartData, radarCandidates, radarSelection, selectedRadar, radarSVG, chartsHTML, observations, synthesisSource, hasCurrentSynthesis, synthesisPrompt, generateSynthesis, synthesisHTML, validateSession, directionReport, reportHTML, prompt};
 });

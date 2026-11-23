@@ -178,11 +178,11 @@
           snapshot={...snapshot,synthesis};setData(snapshot);
         }
         if(!withClaude)snapshot={...snapshot,synthesis:null};
-        const html = format === 'direction' ? P.directionReportHTML(snapshot) : P.reportHTML(snapshot);
+        const {html,notes} = format === 'direction' ? P.directionReport(snapshot) : {html:P.reportHTML(snapshot),notes:[]};
         const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
         reportURL.current=url;
         // Le rapport descriptif n'utilise pas la synthèse, mais reste lié aux données courantes.
-        setReport({url,format,fingerprint:JSON.stringify(withClaude?snapshot:P.validateSession(latest.current))});
+        setReport({url,format,notes,fingerprint:JSON.stringify(withClaude?snapshot:P.validateSession(latest.current))});
         setReportMessage('Rapport prêt. Utilise « Ouvrir le rapport », puis « Imprimer / Enregistrer en PDF ». Relis-le avant transmission.');
       } catch(err){
         const detail=err.name==='TimeoutError' || err.name==='AbortError'
@@ -334,6 +334,9 @@
           }}))),
         currentReport && e('aside',{style:{marginTop:12,padding:12,background:'#edf6f8',borderRadius:8}},
           e('strong',null,'Rapport disponible'),
+          currentReport.notes.length>0 && e('details',{style:{marginTop:8}},
+            e('summary',null,'Notes de préparation'),
+            e('ul',null,...currentReport.notes.map(note=>e('li',{key:note},note)))),
           e('div',{style:{display:'flex',gap:10,flexWrap:'wrap',margin:'10px 0'}},
             e('a',{href:currentReport.url,target:'_blank',rel:'noopener',style:btn},'Ouvrir le rapport'),
             e('a',{href:currentReport.url,download:currentReport.format==='direction'?'Bilan_direction.html':'Rapport_prevention.html',style:btn},'Télécharger le rapport (HTML)')),
