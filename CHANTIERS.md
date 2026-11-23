@@ -16,6 +16,7 @@
 
 ## État vérifié
 
+- Bilan direction (AG-003) : synthèse courte puis graphiques et radar des questions cohérentes. Résultats cochés prioritaires, sélection automatique si aucun résultat exploitable n’est coché. Rapports détaillés à part. Parcours du bouton vérifié sur données fictives et suite CI sous Node 20.
 - Mode Prévention : formulaire du mot de passe IA déplacé au-dessus des boutons de rapport. L’étape d’import renvoie au même champ pour l’analyse des captures.
 - Le rapport Claude exige à la génération des références issues des réponses courantes grâce au format structuré de l’API. Validation locale conservée. Vérifié sur réponses API simulées.
 - Synthèse Claude : le texte demandé décrit les tendances en mots, les appuis du rapport affichent les chiffres exacts. Le contrôle des nombres est conservé. En cas de rejet, le message indique le rapport descriptif.

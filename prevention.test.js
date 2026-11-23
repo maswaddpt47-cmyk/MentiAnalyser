@@ -341,3 +341,27 @@ test('la réponse Claude accepte les clôtures JSON et respecte les plafonds de 
   const refs=synthesisBody();refs.analyse[0].sources=['Q1R1','Q1R2','Q1R3','Q1R1'];
   await assert.rejects(()=>P.generateSynthesis(data,'sk-test-fixture',mockBody(refs)),/référence valide/);
 });
+
+test('le bilan direction sépare les constats courts des graphiques et écarte les chiffres incohérents',()=>{
+  const data={version:P.VERSION,meta:{title:'Atelier fictif',classSize:4,actions:'Prévoir des pauses.',followup:'Faire le point.'},questions:[
+    q({q:'Durée déclarée',options:[{label:'Durée élevée',count:3},{label:'Durée faible',count:1}]}),
+    q({q:'Pauses déclarées',options:[{label:'Sans pause',count:2},{label:'Avec pause',count:1},{label:'Parfois',count:1}]}),
+    q({q:'Chiffres incohérents',options:[{label:'À écarter',count:4,percent:25,highlight:true}]}),
+    q({q:'Base inconnue',respondents:null,options:[{label:'Proportion seule',percent:80}]})
+  ]};
+  const html=P.directionReportHTML(data);
+  const [summary,graphs]=html.split('</main>');
+  assert.match(summary,/<strong>3 sur 4<\/strong> — Durée élevée/);
+  assert.match(summary,/<strong>2 sur 4<\/strong> — Sans pause/);
+  assert.match(summary,/Points à vérifier/);
+  assert.match(summary,/Prévoir des pauses\./);
+  assert.match(summary,/Faire le point\./);
+  assert.doesNotMatch(summary,/Durée faible|Avec pause|chart-row"|Annexe/);
+  assert.match(graphs,/Durée faible/);
+  assert.match(graphs,/data-radar-values="50,25,25"/);
+  assert.doesNotMatch(graphs,/Chiffres incohérents|Base inconnue|Annexe/);
+  data.questions[1].options[1].highlight=true;
+  const chosen=P.directionReportHTML(data).split('</main>')[0];
+  assert.match(chosen,/<strong>1 sur 4<\/strong> — Avec pause/);
+  assert.doesNotMatch(chosen,/Durée élevée|Sans pause/);
+});

@@ -158,7 +158,8 @@
       if(!key)throw new Error('Mot de passe IA incorrect ou manquant.');
       setKey(key);setPassword('');return key;
     }
-    async function exportReport(withClaude=true, force=false) {
+    async function exportReport(format, force=false) {
+      const withClaude = format === 'claude';
       if(busy)return;
       if(draft!==null){setReportMessage('Vérifie puis applique les réponses avant de générer le rapport.');return;}
       if(!data.questions.length){setReportMessage('Ajoute ou importe les résultats du questionnaire.');return;}
@@ -177,11 +178,11 @@
           snapshot={...snapshot,synthesis};setData(snapshot);
         }
         if(!withClaude)snapshot={...snapshot,synthesis:null};
-        const html=P.reportHTML(snapshot);
+        const html = format === 'direction' ? P.directionReportHTML(snapshot) : P.reportHTML(snapshot);
         const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
         reportURL.current=url;
         // Le rapport descriptif n'utilise pas la synthèse, mais reste lié aux données courantes.
-        setReport({url,fingerprint:JSON.stringify(withClaude?snapshot:P.validateSession(latest.current))});
+        setReport({url,format,fingerprint:JSON.stringify(withClaude?snapshot:P.validateSession(latest.current))});
         setReportMessage('Rapport prêt. Utilise « Ouvrir le rapport », puis « Imprimer / Enregistrer en PDF ». Relis-le avant transmission.');
       } catch(err){
         const detail=err.name==='TimeoutError' || err.name==='AbortError'
@@ -318,9 +319,12 @@
           e('button',{type:'submit',style:{...btn,marginTop:8},disabled:busy},'Enregistrer le mot de passe IA'),
           passwordNote && e('p',{role:'status',style:{fontSize:12,margin:'6px 0 0'}},passwordNote)),
         e('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
-          e('button',{style:{...btn,background:'#197d89',color:'#fff'},disabled:busy,onClick:()=>exportReport(true)},generating?'Rédaction par Claude…':'Rapport avec Claude / PDF'),
-          e('button',{style:btn,disabled:busy,onClick:()=>exportReport(false)},'Rapport descriptif / PDF'),
-          normalized && P.hasCurrentSynthesis(normalized) && e('button',{style:btn,disabled:busy,onClick:()=>exportReport(true,true)},'Régénérer la synthèse Claude'),
+          e('button',{style:{...btn,background:'#197d89',color:'#fff'},disabled:busy,onClick:()=>exportReport('direction')},'Bilan direction / PDF'),
+          e('details',null,e('summary',{style:{...btn,cursor:'pointer'}},'Rapports détaillés'),
+            e('div',{style:{display:'flex',gap:8,flexWrap:'wrap',marginTop:8}},
+              e('button',{style:btn,disabled:busy,onClick:()=>exportReport('descriptive')},'Rapport descriptif / PDF'),
+              e('button',{style:btn,disabled:busy,onClick:()=>exportReport('claude')},'Rapport avec Claude / PDF'),
+              normalized && P.hasCurrentSynthesis(normalized) && e('button',{style:btn,disabled:busy,onClick:()=>exportReport('claude',true)},'Régénérer la synthèse Claude'))),
           e('button',{style:btn,disabled:busy||!noDraft,onClick:()=>download(JSON.stringify(P.validateSession(data),null,2),'Questionnaire_prevention.json','application/json')},'Sauvegarder le JSON'),
           e('label',{style:btn},'Ouvrir un JSON prévention',e('input',{type:'file',accept:'.json',disabled:busy,'aria-label':'Ouvrir un JSON prévention',style:{display:'block',maxWidth:220},onChange:async ev=>{
             try{const file=ev.target.files[0];if(!file)return;const restored=P.validateSession(JSON.parse(await file.text()));
@@ -332,10 +336,10 @@
           e('strong',null,'Rapport disponible'),
           e('div',{style:{display:'flex',gap:10,flexWrap:'wrap',margin:'10px 0'}},
             e('a',{href:currentReport.url,target:'_blank',rel:'noopener',style:btn},'Ouvrir le rapport'),
-            e('a',{href:currentReport.url,download:'Rapport_prevention.html',style:btn},'Télécharger le rapport (HTML)')),
+            e('a',{href:currentReport.url,download:currentReport.format==='direction'?'Bilan_direction.html':'Rapport_prevention.html',style:btn},'Télécharger le rapport (HTML)')),
           e('p',null,'Pour obtenir le PDF : ouvre le rapport, clique sur « Imprimer / Enregistrer en PDF », puis choisis « Enregistrer au format PDF » comme destination.')),
         report && !currentReport && e('p',{role:'status'},'Les données ont changé : génère un nouveau rapport pour les données actuelles.'),
-        e('p',{style:{fontSize:12,marginTop:12}},'Le rapport avec Claude transmet les résultats, libellés et textes libres décrits ci-dessus à Anthropic pour une rédaction personnalisée. Une synthèse déjà générée est réutilisée tant que les données ne changent pas. Le PDF s’enregistre depuis « Imprimer / Enregistrer en PDF » dans le rapport. Relis les constats et recommandations avant transmission. Les anciennes notes de quiz nécessitent les captures sources.'))
+        e('p',{style:{fontSize:12,marginTop:12}},'Le bilan direction est généré localement. Le rapport détaillé avec Claude transmet les résultats, libellés et textes libres décrits ci-dessus à Anthropic pour une rédaction personnalisée. Une synthèse déjà générée est réutilisée tant que les données ne changent pas. Le PDF s’enregistre depuis « Imprimer / Enregistrer en PDF » dans le rapport. Relis les constats et recommandations avant transmission. Les anciennes notes de quiz nécessitent les captures sources.'))
     );
   };
 })();
