@@ -346,14 +346,19 @@ test('le bilan direction sépare les constats courts des graphiques et écarte l
   const data={version:P.VERSION,meta:{title:'Atelier fictif',classSize:4,actions:'Prévoir des pauses.',followup:'Faire le point.'},questions:[
     q({q:'Durée déclarée',options:[{label:'Durée élevée',count:3},{label:'Durée faible',count:1}]}),
     q({q:'Pauses déclarées',options:[{label:'Sans pause',count:2},{label:'Avec pause',count:1},{label:'Parfois',count:1}]}),
-    q({q:'Chiffres incohérents',options:[{label:'À écarter',count:4,percent:25,highlight:true}]}),
+    q({q:'Chiffres incohérents',options:[{label:'À écarter',count:4,percent:25}]}),
     q({q:'Base inconnue',respondents:null,options:[{label:'Proportion seule',percent:80}]})
   ]};
   const html=P.directionReportHTML(data);
   const [summary,graphs]=html.split('</main>');
-  assert.match(summary,/<strong>3 sur 4<\/strong> — Durée élevée/);
-  assert.match(summary,/<strong>2 sur 4<\/strong> — Sans pause/);
+  assert.match(summary,/<strong>3 sur 4 · 75 %<\/strong> — Durée élevée/);
+  assert.match(summary,/<strong>2 sur 4 · 50 %<\/strong> — Sans pause/);
   assert.match(summary,/Points à vérifier/);
+  assert.match(summary,/Constats suggérés automatiquement/);
+  assert.match(summary,/Confidentialité/);
+  const detail = P.reportHTML(data);
+  assert.match(detail,/<td>Durée élevée<\/td><td>3 sur 4 · 75 %<\/td>/);
+  assert.match(detail,/<td>Sans pause<\/td><td>2 sur 4 · 50 %<\/td>/);
   assert.match(summary,/Prévoir des pauses\./);
   assert.match(summary,/Faire le point\./);
   assert.doesNotMatch(summary,/Durée faible|Avec pause|chart-row"|Annexe/);
@@ -362,6 +367,10 @@ test('le bilan direction sépare les constats courts des graphiques et écarte l
   assert.doesNotMatch(graphs,/Chiffres incohérents|Base inconnue|Annexe/);
   data.questions[1].options[1].highlight=true;
   const chosen=P.directionReportHTML(data).split('</main>')[0];
-  assert.match(chosen,/<strong>1 sur 4<\/strong> — Avec pause/);
-  assert.doesNotMatch(chosen,/Durée élevée|Sans pause/);
+  assert.match(chosen,/<strong>1 sur 4 · 25 %<\/strong> — Avec pause/);
+  assert.doesNotMatch(chosen,/Durée élevée|Sans pause|suggérés automatiquement/);
+  data.questions[2].options[0].highlight=true;
+  assert.match(P.directionReportHTML(data),/Certains constats cochés sont concernés/);
+  data.questions[0].options.forEach(option=>{option.highlight=true;});
+  assert.match(P.directionReportHTML(data),/Autres constats retenus dans le rapport détaillé[^:]*: 1/);
 });

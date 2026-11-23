@@ -5,6 +5,7 @@ const path = require('node:path');
 const {spawnSync} = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 const mutations = [
+  ['effectif du bilan direction décalé', 'prevention.js', 'esc(optionValue(q,option))', 'esc(optionValue(q,{...option,count:option.count+1}))'],
   ['pourcentage utilisé comme effectif', 'prevention.js', 'count: number(o.count, true)', 'count: number(o.percent, true)'],
   ['pourcentage source utilisé à la place du calcul', 'prevention.js', 'Math.round(o.count / q.respondents * 1000) / 10', 'o.percent'],
   ['sous-total en réponse unique ignoré', 'prevention.js', 'sum !== q.respondents', 'sum > q.respondents'],

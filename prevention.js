@@ -254,10 +254,11 @@ DONNEES VERIFIEES :\n${JSON.stringify(payload)}`;
       !warnings({...q,options:q.options.map(o => ({...o,highlight:false}))},meta.classSize).length);
     const candidates = eligible.flatMap(q => q.options.map(option => ({q,option})));
     const selected = candidates.filter(({option}) => option.highlight);
-    const ordered = selected.length ? selected : candidates.filter(({option}) => option.count > 0)
+    const numberChecked = questions.reduce((sum,q) => sum + q.options.filter(o => o.highlight).length,0);
+    const ordered = numberChecked ? selected : candidates.filter(({option}) => option.count > 0)
       .sort((a,b) => optionPercent(b.q,b.option) - optionPercent(a.q,a.option));
     const findings = ordered.filter(({q},i) => selected.length || ordered.findIndex(row => row.q === q) === i).slice(0,2);
-    const lines = findings.map(({q,option}) => `<li><strong>${esc(option.count)} sur ${esc(q.respondents)}</strong> — ${esc(option.label)}<small>${esc(q.q)}</small></li>`);
+    const lines = findings.map(({q,option}) => `<li><strong>${esc(optionValue(q,option))}</strong> — ${esc(option.label)}<small>${esc(q.q)}</small></li>`);
     const title = esc(meta.title || 'Usages des écrans');
     const date = /^\d{4}-\d{2}-\d{2}$/.test(meta.date) ? meta.date.split('-').reverse().join('/') : meta.date;
     const classSize = meta.classSize > 0 ? `Effectif de la classe : ${meta.classSize}` : '';
@@ -273,10 +274,13 @@ DONNEES VERIFIEES :\n${JSON.stringify(payload)}`;
 ${paragraphs('Objectif de l’atelier',meta.objective)}
 <section><h2>Ce qui ressort</h2>
 ${lines.length ? `<ul class="findings">${lines.join('')}</ul>` : '<p>Aucun résultat chiffré suffisamment renseigné pour ce bilan.</p>'}
+${!numberChecked && lines.length ? '<p class="source">Constats suggérés automatiquement selon la fréquence des réponses. Pour en choisir d’autres, coche les réponses à l’étape 3.</p>' : ''}
+${selected.length > findings.length ? `<p class="source">Les deux premières réponses cochées sont présentées dans l’ordre du questionnaire. Autres constats retenus dans le rapport détaillé : ${selected.length - findings.length}.</p>` : ''}
+${candidates.some(({option}) => option.count === 1 || option.count === 2) ? '<p class="source">Confidentialité. Certaines réponses concernent très peu d’élèves. Évite tout détail permettant de les identifier.</p>' : ''}
 <p class="source">Source. Réponses déclarées au questionnaire de l’atelier. La base est indiquée pour chaque résultat.</p></section>
 ${paragraphs('Action proposée',meta.actions)}
 ${paragraphs('Suivi proposé',meta.followup)}
-${eligible.length < questions.length ? '<section><h2>Points à vérifier</h2><p>Des questions dont les effectifs sont incomplets, incohérents ou ambigus restent à vérifier dans le rapport détaillé.</p></section>' : ''}
+${eligible.length < questions.length ? '<section><h2>Points à vérifier</h2><p>Des questions dont les effectifs sont incomplets, incohérents ou ambigus restent à vérifier dans le rapport détaillé.</p>' + (numberChecked > selected.length ? '<p>Certains constats cochés sont concernés. Vérifie leur question avant de les reprendre.</p>' : '') + '</section>' : ''}
 </main>
 ${eligible.length ? chartsHTML({...session,questions:eligible}) : ''}
 </body></html>`;
