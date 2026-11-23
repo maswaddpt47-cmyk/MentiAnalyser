@@ -16,6 +16,7 @@
 
 ## État vérifié
 
+- Synthèse Claude : le texte demandé décrit les tendances en mots, les appuis du rapport affichent les chiffres exacts. Le contrôle des nombres est conservé. En cas de rejet, le message indique le rapport descriptif.
 - Étape 3 du mode Prévention : vérifications regroupées par question et rappel de confidentialité unique. Le caractère facultatif des cases de synthèse est explicite. Rendu vérifié sur des réponses fictives et suite CI passée sous Node 20.
 - Règle 69 (`6b2e720`) : Chromium 390/1280 px, sans erreur JS ; champs en
   formulaire, identifiant hors écran, Entrée sans rechargement, confirmation

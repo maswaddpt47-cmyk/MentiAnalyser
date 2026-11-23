@@ -239,7 +239,7 @@ test('la rédaction sort de l’attente si la requête ou le corps de réponse r
 test('les nombres inventés sont refusés dans toutes les sections, y compris avec une référence valide',async()=>{
   for(const key of ['contexte','priorites','actions','suivi','conclusion']) {
     const body=synthesisBody();body[key]='92 % des élèves dorment mal.';
-    await assert.rejects(()=>P.generateSynthesis(aiSession(),'sk-test-fixture',mockBody(body)),/nombre absent/);
+    await assert.rejects(()=>P.generateSynthesis(aiSession(),'sk-test-fixture',mockBody(body)),/nombre absent.*Rapport descriptif \/ PDF/);
   }
   const body=synthesisBody();body.analyse[0].texte='92 % jouent après minuit.';
   await assert.rejects(()=>P.generateSynthesis(aiSession(),'sk-test-fixture',mockBody(body)),/nombre absent/);
@@ -264,6 +264,7 @@ test('le prompt oriente la rédaction vers les constats retenus et transmet les 
   const prompt=P.synthesisPrompt(data),payload=JSON.parse(prompt.split('DONNEES VERIFIEES :\n')[1]);
   assert.match(prompt,/retenu=true.*priorités choisies/);
   assert.match(prompt,/Interdiction de créer une note/);
+  assert.match(prompt,/sans chiffre.*Le rapport ajoute lui-même les chiffres exacts/);
   assert.equal(payload.observations[0].retenu,true);assert.equal(payload.observations[1].retenu,false);
   assert.match(payload.reserves.map(r=>r.reserve).join(' '),/divergent/);
   assert.equal(payload.contexte.actions,'Action fictive');assert.equal(payload.contexte.followup,'Suivi fictif');
