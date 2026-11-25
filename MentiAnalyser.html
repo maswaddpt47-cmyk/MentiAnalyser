@@ -1633,7 +1633,7 @@ function App() {
               // Convertir "16 mai 2026" → "2026-05-16"
               const mois = {janvier:"01",février:"02",mars:"03",avril:"04",mai:"05",juin:"06",
                 juillet:"07",août:"08",septembre:"09",octobre:"10",novembre:"11",décembre:"12"};
-              const m = dateSession.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
+              const m = dateSession.normalize("NFC").match(/(\d{1,2})\s+(\p{L}+)\s+(\d{4})/u);
               if (m) {
                 const mm = mois[m[2].toLowerCase()];
                 if (mm) return `${m[3]}-${mm}-${m[1].padStart(2,'0')}`;

@@ -2,6 +2,12 @@
 
 État au **17/11/2026** (code `d56b105`, base des consignes : commit de ménage du 17/11). Ménage de `CLAUDE.md` fait (ligne commune MD-LIB, copies retirées), synchronisation `git fetch` + `merge --ff-only` (règle 63), tableau des tests complété avec la CI ; annonce AGORA 🔴, rôles Claude/Codex dans les deux sens et relais « pull » alignés (`74eae2c`). Avant : règle 69 confirmée (Proton Pass), aide-mémoire 💡 retiré.
 
+## Calendrier du quiz — 25/11/2026
+
+- Sur `5b3f49f`, le calendrier restait vide après import ou saisie d’une date de février, août ou décembre. Le JSON conservait la bonne valeur. Exercices indépendants Codex et Claude consignés dans PILOTAGE-PORTFOLIO, D-025.
+- Le champ reconnaît les mois accentués grâce au traitement Unicode, avec le format JSON existant. Sous Chromium, import, calendrier, saisie et réexport des douze mois, dont le 29 février, vérifiés sur données fictives à Paris et Los Angeles. Reprise du quiz et du mode Prévention également vérifiée.
+- Suite de déploiement sous Node 20 : 93 tests réussis et 23 mutations détectées. Accès de secours et copie opérationnelle CD47 à confirmer.
+
 ## En cours
 
 - Faire essayer le nouveau parcours du rapport et les suggestions
