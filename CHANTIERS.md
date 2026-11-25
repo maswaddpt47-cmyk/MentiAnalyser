@@ -1,6 +1,6 @@
 # CHANTIERS — MentiAnalyser
 
-État au **17/11/2026** (code `d56b105`, base des consignes : commit de ménage du 17/11). Ménage de `CLAUDE.md` fait (ligne commune MD-LIB, copies retirées), synchronisation `git fetch` + `merge --ff-only` (règle 63), tableau des tests complété avec la CI ; annonce AGORA 🔴, rôles Claude/Codex dans les deux sens et relais « pull » alignés (`74eae2c`). Avant : règle 69 confirmée (Proton Pass), aide-mémoire 💡 retiré.
+État au **25/11/2026** (code `18229c8`, publié par le run 41). Avant : ménage de `CLAUDE.md` et alignement AGORA/Codex du 17/11 (`823c904`, `74eae2c`), règle 69 confirmée (Proton Pass), aide-mémoire 💡 retiré.
 
 ## Calendrier du quiz — 25/11/2026
 
@@ -22,6 +22,13 @@
 
 ## État vérifié
 
+- `18229c8` publié le 25/11/2026 : le run 41 (relance manuelle, 07:13 heure de
+  Paris) réussit tests et déploiement ; https://github.com/maswaddpt47-cmyk/MentiAnalyser/actions/runs/45559030026
+  Le run 40 du push (07:12) avait échoué à l'étape « Deploy to GitHub Pages »
+  seule, les quatre contrôles de test verts : fichier du site envoyé, puis
+  « No artifacts named "github-pages" » moins d'une seconde après. Incident
+  GitHub passager, pas un défaut du code ; conduite : relancer une fois.
+  Version servie non vérifiée ici (proxy) : contrôle de l'utilisateur.
 - Prévention : « Nouveau questionnaire » remet le formulaire à zéro après confirmation. Une nouvelle sélection de fichiers retire le lien du précédent rapport et demande une analyse avant tout nouvel export. Annulation et blocage vérifiés sur données fictives.
 - Régénération Claude : le suivi proposé est demandé même si l’animateur laisse le champ vide. Une réponse sans suivi reste exportable, avec les autres sections et le suivi éventuel de l’animateur. Cas couvert sur réponse simulée.
 - Bilan direction : les notes de préparation sont consultables dans l’application, près du rapport généré. Le PDF est réservé au bilan et aux graphiques.
